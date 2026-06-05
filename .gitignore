@@ -1,0 +1,16 @@
+#Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+.env
+
+#Next.js
+frontend/.next/
+frontend/node_modules/
+frontend/.vercel/
+
+#macOS
+.DS_Store
