@@ -7,12 +7,12 @@ import { login } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -20,7 +20,7 @@ export default function LoginPage() {
       await login(email, password);
       router.push('/dashboard');
     } catch (err) {
-      setError(err.message);
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -28,14 +28,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left panel */}
       <div className="hidden lg:flex flex-col justify-between w-[45%] p-12" style={{ background: '#0a0a0a' }}>
         <span className="text-white font-bold text-lg tracking-tight">Meal Planner</span>
         <div>
           <p className="text-white font-bold leading-tight" style={{ fontSize: 68, letterSpacing: '-1px' }}>
             Plan your week,<br />eat better.
           </p>
-          <p className="mt-4 text-base" style={{ color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, fontSize: 40}}>
+          <p className="mt-4 text-base" style={{ color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, fontSize: 40 }}>
             Save recipes from anywhere, plan<br />
             your meals, and get a shopping list<br />
             generated automatically.
@@ -52,7 +51,6 @@ export default function LoginPage() {
         <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>© 2026 Meal Planner</p>
       </div>
 
-      {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-sm">
           <div className="mb-8">
@@ -74,9 +72,8 @@ export default function LoginPage() {
                 onChange={e => setEmail(e.target.value)}
                 className="w-full text-sm focus:outline-none transition-colors"
                 style={{ height: 52, padding: '0 16px', border: '1.5px solid #e2e2e7', borderRadius: 12, color: '#191c1f' }}
-                onFocus={e => e.target.style.borderColor = '#191c1f'}
-                onBlur={e => e.target.style.borderColor = '#e2e2e7'}
-                /*placeholder="you@example.com"*/
+                onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'}
               />
             </div>
             <div>
@@ -86,17 +83,16 @@ export default function LoginPage() {
                 onChange={e => setPassword(e.target.value)}
                 className="w-full text-sm focus:outline-none transition-colors"
                 style={{ height: 52, padding: '0 16px', border: '1.5px solid #e2e2e7', borderRadius: 12, color: '#191c1f' }}
-                onFocus={e => e.target.style.borderColor = '#191c1f'}
-                onBlur={e => e.target.style.borderColor = '#e2e2e7'}
-                /*placeholder="••••••••"*/
+                onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'}
               />
             </div>
             <button
               type="submit" disabled={loading}
               className="w-full font-semibold text-lg text-white disabled:opacity-50 transition-all"
               style={{ height: 52, borderRadius: 12, background: '#191c1f' }}
-              onMouseEnter={e => e.target.style.background = '#000'}
-              onMouseLeave={e => e.target.style.background = '#191c1f'}
+              onMouseEnter={e => e.currentTarget.style.background = '#000'}
+              onMouseLeave={e => e.currentTarget.style.background = '#191c1f'}
             >
               {loading ? 'Signing in…' : 'Sign in →'}
             </button>

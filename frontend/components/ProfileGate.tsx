@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getProfile, isLoggedIn } from '@/lib/api';
 
-export default function ProfileGate({ children }) {
+export default function ProfileGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 

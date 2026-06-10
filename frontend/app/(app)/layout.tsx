@@ -1,7 +1,7 @@
 import NavLinks from '@/components/NavLinks';
 import ProfileGate from '@/components/ProfileGate';
 
-export default function AppLayout({ children }) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProfileGate>
       <div className="flex flex-col h-screen overflow-hidden" style={{ background: '#f4f4f4' }}>

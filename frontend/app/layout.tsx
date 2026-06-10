@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
@@ -7,12 +8,12 @@ const jakarta = Plus_Jakarta_Sans({
   variable: '--font-jakarta',
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Meal Planner',
   description: 'Plan meals from your saved recipes',
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${jakarta.variable} h-full`}>
       <body className="h-full antialiased">{children}</body>

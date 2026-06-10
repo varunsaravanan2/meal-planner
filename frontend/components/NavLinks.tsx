@@ -64,11 +64,11 @@ function IconLogout() {
 }
 
 const links = [
-  { href: '/dashboard',     label: 'Plan',          Icon: IconCalendar },
-  { href: '/recipes',       label: 'Recipes',        Icon: IconBook     },
-  { href: '/shopping-list', label: 'Shopping',       Icon: IconBag      },
-  { href: '/pantry',        label: 'Pantry',          Icon: IconPantry   },
-  { href: '/profile',       label: 'Profile',         Icon: IconProfile  },
+  { href: '/dashboard',     label: 'Plan',     Icon: IconCalendar },
+  { href: '/recipes',       label: 'Recipes',  Icon: IconBook     },
+  { href: '/shopping-list', label: 'Shopping', Icon: IconBag      },
+  { href: '/pantry',        label: 'Pantry',   Icon: IconPantry   },
+  { href: '/profile',       label: 'Profile',  Icon: IconProfile  },
 ];
 
 export default function NavLinks() {
@@ -76,16 +76,11 @@ export default function NavLinks() {
 
   return (
     <nav className="flex items-center justify-between px-6" style={{ background: '#0d0d0d', height: 64, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-
-      {/* Logo */}
       <div className="flex items-center gap-2.5">
-        <div className="flex items-center justify-center rounded-lg text-white font-black text-sm" style={{ width: 30, height: 30, background: '#494fdf' }}>
-          M
-        </div>
+        <div className="flex items-center justify-center rounded-lg text-white font-black text-sm" style={{ width: 30, height: 30, background: '#494fdf' }}>M</div>
         <span className="text-sm font-bold tracking-tight text-white opacity-80">MealPlan</span>
       </div>
 
-      {/* Nav links */}
       <ul className="flex items-center gap-0.5">
         {links.map(({ href, label, Icon }) => {
           const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
@@ -94,10 +89,7 @@ export default function NavLinks() {
               <Link
                 href={href}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
-                style={active
-                  ? { background: 'rgba(255,255,255,0.08)', color: '#fff' }
-                  : { color: 'rgba(255,255,255,0.35)' }
-                }
+                style={active ? { background: 'rgba(255,255,255,0.08)', color: '#fff' } : { color: 'rgba(255,255,255,0.35)' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; }}
               >
@@ -109,7 +101,6 @@ export default function NavLinks() {
         })}
       </ul>
 
-      {/* Sign out */}
       <button
         onClick={logout}
         className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
