@@ -36,12 +36,15 @@ class NutritionInfo(BaseModel):
             "fat": 15
         }
     """
-    calories: Optional[int] = Field(None, description="Calories per serving")
-    protein: Optional[float] = Field(None, description="Protein in grams")
-    carbs: Optional[float] = Field(None, description="Carbohydrates in grams")
-    fat: Optional[float] = Field(None, description="Fat in grams")
-    fiber: Optional[float] = Field(None, description="Fiber in grams")
-    sugar: Optional[float] = Field(None, description="Sugar in grams")
+    calories: Optional[float] = Field(None)
+    protein_g: Optional[float] = Field(None)
+    carbs_g: Optional[float] = Field(None)
+    fat_g: Optional[float] = Field(None)
+    saturated_fat_g: Optional[float] = Field(None)
+    fiber_g: Optional[float] = Field(None)
+    sugar_g: Optional[float] = Field(None)
+    sodium_mg: Optional[float] = Field(None)
+    cholesterol_mg: Optional[float] = Field(None)
 
 
 class RecipeBase(BaseModel):

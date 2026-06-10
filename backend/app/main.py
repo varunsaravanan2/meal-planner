@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import engine, Base
-from app.models import user, recipe, inventory, meal_plan
-from app.api.v1 import auth, recipes, inventory as inventory_router, meal_plan as meal_plan_router, shopping_list as shopping_list_router
+from app.models import user, recipe, inventory, meal_plan, user_profile, workout_plan
+from app.api.v1 import auth, recipes, inventory as inventory_router, meal_plan as meal_plan_router, shopping_list as shopping_list_router, user_profile as user_profile_router, workout_plan as workout_router
 
 
 app = FastAPI(
@@ -46,6 +46,12 @@ app.include_router(
 )
 
 app.include_router(
+    user_profile_router.router,
+    prefix="/api/v1/profile",
+    tags=["User Profile"]
+)
+
+app.include_router(
     inventory_router.router,
     prefix="/api/v1/inventory",
     tags=["Inventory"]
@@ -61,6 +67,12 @@ app.include_router(
     shopping_list_router.router,
     prefix="/api/v1/shopping-list",
     tags=["Shopping List"]
+)
+
+app.include_router(
+    workout_router.router,
+    prefix="/api/v1/workouts",
+    tags=["Workouts"]
 )
 
 
