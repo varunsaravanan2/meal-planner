@@ -27,3 +27,16 @@ def create_workout(db: Session, user_id: UUID, data: dict) -> WorkoutPlan:
     db.commit()
     db.refresh(entry)
     return entry
+
+
+def update_workout(db: Session, entry: WorkoutPlan, data: dict) -> WorkoutPlan:
+    for key, val in data.items():
+        setattr(entry, key, val)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+def delete_workout(db: Session, entry: WorkoutPlan) -> None:
+    db.delete(entry)
+    db.commit()

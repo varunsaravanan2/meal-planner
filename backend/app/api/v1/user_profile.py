@@ -27,10 +27,59 @@ def generate_plan(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    import traceback
+    from app.crud.subscription import get_or_create_free, can_generate, increment_generations
+    from app.crud.plan_snapshot import save_snapshot
+
     profile = get_profile(db, current_user.id)
     if not profile:
         raise HTTPException(status_code=400, detail="Complete your profile before generating a plan.")
 
+    sub = get_or_create_free(db, current_user.id)
+    if not can_generate(sub):
+        raise HTTPException(
+            status_code=402,
+            detail=f"You've used all {sub.generations_limit} AI generation(s) on your {sub.plan_type} plan. Upgrade to generate more.",
+        )
+
     monday = date.today() - __import__("datetime").timedelta(days=date.today().weekday())
-    result = generate_week_plan(db, current_user.id, profile, monday)
-    return result
+
+    # Save current plan as a snapshot before overwriting
+    try:
+        from app.crud.meal_plan import get_meal_plans_for_range, get_week_range
+        start, end = get_week_range(monday)
+        entries = get_meal_plans_for_range(db, current_user.id, start, end)
+        if entries:
+            days_map: dict = {}
+            for e in entries:
+                key = e.planned_date.isoformat()
+                if key not in days_map:
+                    days_map[key] = []
+                r = e.recipe
+                days_map[key].append({
+                    "slot": e.meal_slot,
+                    "title": r.title if r else "",
+                    "description": r.description if r else None,
+                    "category": r.category if r else None,
+                    "cuisine": r.cuisine if r else None,
+                    "prep_time": r.prep_time if r else None,
+                    "cook_time": r.cook_time if r else None,
+                    "servings": e.servings,
+                    "ingredients": [{"name": i.name, "quantity": str(i.quantity), "unit": i.unit} for i in (r.ingredients_list or [])] if r else [],
+                    "steps": r.steps or [] if r else [],
+                    "nutrition": r.nutrition or {} if r else {},
+                })
+            save_snapshot(db, current_user.id, monday, {
+                "days": [{"date": k, "meals": v} for k, v in sorted(days_map.items())]
+            })
+    except Exception:
+        pass  # Never block generation due to snapshot failure
+
+    try:
+        result = generate_week_plan(db, current_user.id, profile, monday)
+        increment_generations(db, sub)
+        result["generations_remaining"] = max(0, sub.generations_limit - sub.generations_used - 1)
+        return result
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

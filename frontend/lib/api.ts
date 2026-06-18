@@ -75,10 +75,28 @@ export async function getProfile(): Promise<UserProfile | null> {
   return request<UserProfile | null>('/api/v1/profile');
 }
 
+const INT_FIELDS    = ['age', 'height_ft', 'height_in', 'workouts_per_week'] as const;
+const FLOAT_FIELDS  = ['weight_lbs', 'target_weight_lbs', 'weekly_budget'] as const;
+
 export async function saveProfile(data: Partial<UserProfile>): Promise<UserProfile> {
+  const payload: Record<string, unknown> = { ...data };
+  for (const f of INT_FIELDS) {
+    if (payload[f] !== undefined && payload[f] !== null && payload[f] !== '') {
+      payload[f] = parseInt(payload[f] as string, 10) || null;
+    } else if (payload[f] === '') {
+      payload[f] = null;
+    }
+  }
+  for (const f of FLOAT_FIELDS) {
+    if (payload[f] !== undefined && payload[f] !== null && payload[f] !== '') {
+      payload[f] = parseFloat(payload[f] as string) || null;
+    } else if (payload[f] === '') {
+      payload[f] = null;
+    }
+  }
   return request<UserProfile>('/api/v1/profile', {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -174,4 +192,109 @@ export async function updateInventoryItem(id: string, data: Partial<InventoryIte
 export async function getWeeklyShoppingList(weekOf?: string): Promise<ShoppingList> {
   const params = weekOf ? `?week_of=${weekOf}` : '';
   return request<ShoppingList>(`/api/v1/shopping-list/week${params}`);
+}
+
+// ── Billing ───────────────────────────────────────────────────────────────────
+
+export interface SubscriptionStatus {
+  plan_type: string;
+  status: string;
+  generations_used: number;
+  generations_limit: number;
+  generations_remaining: number;
+  expires_at: string | null;
+}
+
+export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
+  return request<SubscriptionStatus>('/api/v1/billing/status');
+}
+
+export async function createCheckoutSession(plan_type: string): Promise<{ url: string }> {
+  return request<{ url: string }>('/api/v1/billing/create-checkout', {
+    method: 'POST',
+    body: JSON.stringify({ plan_type }),
+  });
+}
+
+// ── Plan Snapshots ────────────────────────────────────────────────────────────
+
+export interface PlanSnapshot {
+  id: string;
+  week_start: string;
+  created_at: string;
+}
+
+export async function listPlanSnapshots(week_start: string): Promise<PlanSnapshot[]> {
+  return request<PlanSnapshot[]>(`/api/v1/plan-snapshots?week_start=${week_start}`);
+}
+
+export async function restorePlanSnapshot(snapshot_id: string): Promise<{ meals_restored: number }> {
+  return request<{ meals_restored: number }>(`/api/v1/plan-snapshots/${snapshot_id}/restore`, { method: 'POST' });
+}
+
+// ── Workouts (manual entry) ────────────────────────────────────────────────────
+
+export interface ExerciseEntry {
+  name: string;
+  sets?: number;
+  reps?: string | number;
+  notes?: string;
+}
+
+export interface WorkoutEntry {
+  planned_date: string;
+  is_rest_day?: boolean;
+  workout_type?: string;
+  title?: string;
+  duration_minutes?: number;
+  exercises?: ExerciseEntry[];
+  notes?: string;
+}
+
+export async function saveWorkout(data: WorkoutEntry): Promise<WorkoutPlan> {
+  return request<WorkoutPlan>('/api/v1/workouts', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function deleteWorkoutEntry(id: string): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>(`/api/v1/workouts/${id}`, { method: 'DELETE' });
+}
+
+// ── Workout Templates ──────────────────────────────────────────────────────────
+
+export interface WorkoutTemplate {
+  id: string;
+  title: string;
+  workout_type: string | null;
+  duration_minutes: number | null;
+  exercises: ExerciseEntry[] | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export async function getWorkoutTemplates(): Promise<WorkoutTemplate[]> {
+  return request<WorkoutTemplate[]>('/api/v1/workout-templates');
+}
+
+export async function createWorkoutTemplate(data: {
+  title: string;
+  workout_type?: string;
+  duration_minutes?: number;
+  exercises?: ExerciseEntry[];
+  notes?: string;
+}): Promise<WorkoutTemplate> {
+  return request<WorkoutTemplate>('/api/v1/workout-templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteWorkoutTemplate(id: string): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>(`/api/v1/workout-templates/${id}`, { method: 'DELETE' });
+}
+
+export async function scheduleWorkoutTemplate(id: string, planned_date: string): Promise<{ scheduled: boolean; date: string }> {
+  return request<{ scheduled: boolean; date: string }>(`/api/v1/workout-templates/${id}/schedule`, {
+    method: 'POST',
+    body: JSON.stringify({ planned_date }),
+  });
 }
