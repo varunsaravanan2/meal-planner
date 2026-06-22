@@ -8,6 +8,7 @@ from app.models.user_profile import UserProfile
 from app.crud.recipe import create_recipe
 from app.crud.meal_plan import create_meal_plan
 from app.models.meal_plan import MealPlan
+from app.models.recipe import Recipe
 from app.crud.workout_plan import clear_week as clear_workout_week, create_workout
 from app.services.nutrition import lookup_ingredient
 from app.config import settings
@@ -208,11 +209,21 @@ Rules:
 
 
 def clear_week(db: Session, user_id: UUID, monday: date):
-    sunday = monday + timedelta(days=6)
+    # Delete all meal plan entries that reference AI-generated recipes (any week)
+    # so the FK constraint is satisfied before deleting the recipes themselves
+    ai_recipe_ids = db.query(Recipe.id).filter(
+        Recipe.user_id == user_id,
+        Recipe.source_url == "ai-generated",
+    ).subquery()
     db.query(MealPlan).filter(
         MealPlan.user_id == user_id,
-        MealPlan.planned_date >= monday,
-        MealPlan.planned_date <= sunday,
+        MealPlan.recipe_id.in_(ai_recipe_ids),
+    ).delete(synchronize_session="fetch")
+    db.commit()
+    # Now safe to delete the AI-generated recipes
+    db.query(Recipe).filter(
+        Recipe.user_id == user_id,
+        Recipe.source_url == "ai-generated",
     ).delete()
     db.commit()
 

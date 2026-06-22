@@ -1,25 +1,128 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is([data-theme="dark"] *), &:is([data-theme="dark"]));
+
 @theme {
-  --color-primary: #494fdf;
-  --color-ink: #191c1f;
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-ink: #0d1829;
   --color-surface-elevated: #16181a;
-  --color-surface-soft: #f4f4f4;
-  --color-mute: #505a63;
-  --color-stone: #8d969e;
-  --color-hairline: #e2e2e7;
+  --color-surface-soft: #f0f4ff;
+  --color-mute: #3d5275;
+  --color-stone: #6b86a0;
+  --color-hairline: #d0ddf0;
   --color-danger: #e23b4a;
+
+  --color-secondary: #eef2ff;
+  --color-secondary-foreground: #0d1829;
+  --color-muted: #eef2ff;
+  --color-muted-foreground: #3d5275;
+  --color-accent: #eef2ff;
+  --color-accent-foreground: #0d1829;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-card: #ffffff;
+  --color-card-foreground: #0d1829;
+  --color-border: #d0ddf0;
+  --color-input: #d0ddf0;
+  --color-ring: rgba(59,130,246,0.4);
+  --color-background: #f4f7ff;
+  --color-foreground: #0d1829;
 }
 
+/* ── Light mode tokens ──────────────────────────────────────── */
+:root {
+  --bg-page: #f4f7ff;
+  --bg-card: #ffffff;
+  --bg-soft: #eef2ff;
+  --bg-input: #ffffff;
+  --bg-muted: #f0f4ff;
+  --nav-bg: #0f1117;
+  --auth-panel-bg: #ffffff;
+
+  --text-primary: #0d1829;
+  --text-secondary: #3d5275;
+  --text-tertiary: #6b86a0;
+  --text-placeholder: #a0b4c8;
+
+  --border-color: #d0ddf0;
+  --border-soft: #e4ebf8;
+
+  --shadow-sm:  0 1px 3px rgba(0,30,80,0.06), 0 1px 2px rgba(0,30,80,0.04);
+  --shadow-md:  0 4px 16px rgba(0,30,80,0.08), 0 2px 4px rgba(0,30,80,0.04);
+  --shadow-lg:  0 8px 28px rgba(0,30,80,0.10), 0 4px 8px rgba(0,30,80,0.05);
+  --shadow-xl:  0 24px 64px rgba(0,30,80,0.14), 0 8px 24px rgba(0,30,80,0.07);
+  --shadow-card: 0 2px 8px rgba(0,30,80,0.07), 0 0 0 1px rgba(0,30,80,0.04);
+  --shadow-card-hover: 0 10px 32px rgba(59,130,246,0.12), 0 0 0 1px rgba(59,130,246,0.15);
+  --modal-overlay: rgba(5,20,50,0.6);
+}
+
+/* ── Dark mode tokens ───────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-page: linear-gradient(160deg, #0c0d18 0%, #090b14 50%, #0b0e18 100%);
+  --bg-card: #16181f;
+  --bg-soft: #1e2130;
+  --bg-input: #12141c;
+  --bg-muted: #1a1d28;
+
+  --text-primary: #edf0f5;
+  --text-secondary: #8899b0;
+  --text-tertiary: #526070;
+  --text-placeholder: #3a4a60;
+
+  --border-color: #272d40;
+  --border-soft: #1c2030;
+
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-card-hover: 0 10px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.2);
+  --modal-overlay: rgba(0,0,0,0.75);
+  --nav-bg: #0a0c12;
+  --auth-panel-bg: linear-gradient(160deg, #0f1117 0%, #13161f 100%);
+
+  --color-card: #16181f;
+  --color-card-foreground: #edf0f5;
+  --color-background: #0c0d18;
+  --color-foreground: #edf0f5;
+  --color-muted: #1e2130;
+  --color-muted-foreground: #8899b0;
+  --color-accent: #1e2130;
+  --color-accent-foreground: #edf0f5;
+  --color-secondary: #1e2130;
+  --color-secondary-foreground: #edf0f5;
+  --color-border: #272d40;
+  --color-input: #272d40;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
 body {
-  background: #ffffff;
-  color: #191c1f;
-  font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background: var(--bg-page);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-raleway), 'Raleway', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  font-size: 16px;
+  font-size: 14px;
+  min-height: 100vh;
+  transition: background 0.3s ease, color 0.2s ease;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-lora), 'Lora', Georgia, serif;
+}
+
+/* ── Utilities ──────────────────────────────────────────────── */
 @keyframes pageTransitionIn {
-  from { opacity: 0; transform: translateY(14px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-soft) 25%, var(--border-color) 50%, var(--bg-soft) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
 }

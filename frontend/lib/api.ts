@@ -7,6 +7,8 @@ import type {
   InventoryItem,
   ShoppingList,
   GeneratePlanResult,
+  ProgressEntry,
+  ProgressPhoto
 } from '@/types';
 
 const BASE = 'http://localhost:8000';
@@ -298,3 +300,40 @@ export async function scheduleWorkoutTemplate(id: string, planned_date: string):
     body: JSON.stringify({ planned_date }),
   });
 }
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+
+export async function getProgressEntries(): Promise<ProgressEntry[]> {
+  return request<ProgressEntry[]>('/api/v1/progress');
+}
+
+export async function createProgressEntry(data: { week_date: string; weight_lbs?: number }): Promise<ProgressEntry> {
+  return request<ProgressEntry>('/api/v1/progress', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateProgressEntry(id: string, data: { weight_lbs?: number }): Promise<ProgressEntry> {
+  return request<ProgressEntry>(`/api/v1/progress/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteProgressEntry(id: string): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>(`/api/v1/progress/${id}`, { method: 'DELETE' });
+}
+
+export async function uploadProgressPhoto(entryId: string, file: File, label?: string): Promise<ProgressPhoto> {
+  const token = localStorage.getItem('token');
+  const form = new FormData();
+  form.append('file', file);
+  if (label) form.append('label', label);
+  const res = await fetch(`http://localhost:8000/api/v1/progress/${entryId}/photos`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  return res.json();
+}
+
+export async function deleteProgressPhoto(photoId: string): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>(`/api/v1/progress/photos/${photoId}`, { method: 'DELETE' });
+}
+

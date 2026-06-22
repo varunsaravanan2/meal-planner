@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import engine, Base
-from app.models import user, recipe, inventory, meal_plan, user_profile, workout_plan, subscription, plan_snapshot, workout_template
-from app.api.v1 import auth, recipes, inventory as inventory_router, meal_plan as meal_plan_router, shopping_list as shopping_list_router, user_profile as user_profile_router, workout_plan as workout_router, billing as billing_router, plan_snapshots as snapshots_router, workout_templates as workout_templates_router
+from app.models import user, recipe, inventory, meal_plan, user_profile, workout_plan, subscription, plan_snapshot, workout_template, progress
+from app.api.v1 import auth, recipes, inventory as inventory_router, meal_plan as meal_plan_router, shopping_list as shopping_list_router, user_profile as user_profile_router, workout_plan as workout_router, billing as billing_router, plan_snapshots as snapshots_router, workout_templates as workout_templates_router, progress as progress_router
 
 
 app = FastAPI(
@@ -31,6 +31,11 @@ async def startup_event():
     print("✅ Database tables created!")
     print("🚀 Meal Planner API is ready!")
 
+app.include_router(
+    progress_router.router,
+    prefix="/api/v1/progress",
+    tags=["Progress"]
+)
 
 # Include routers
 app.include_router(

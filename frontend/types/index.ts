@@ -125,3 +125,19 @@ export interface RecipeListResponse {
   page_size: number;
   total_pages: number;
 }
+
+export interface ProgressPhoto {
+  id: string;
+  progress_entry_id: string;
+  url: string;
+  label: string | null;
+  created_at: string;
+}
+
+export interface ProgressEntry {
+  id: string;
+  week_date: string;
+  weight_lbs: number | null;
+  created_at: string;
+}
+

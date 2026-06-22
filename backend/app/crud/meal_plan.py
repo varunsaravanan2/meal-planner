@@ -34,6 +34,15 @@ def create_meal_plan(
     servings: Optional[int] = None,
     notes: Optional[str] = None
 ) -> MealPlan:
+    from fastapi import HTTPException
+    if meal_slot != 'snack':
+        existing = db.query(MealPlan).filter(
+            MealPlan.user_id == user_id,
+            MealPlan.planned_date == planned_date,
+            MealPlan.meal_slot == meal_slot,
+        ).first()
+        if existing:
+            raise HTTPException(status_code=409, detail=f"A {meal_slot} is already planned for {planned_date}. Remove it first.")
     entry = MealPlan(
         user_id=user_id,
         recipe_id=recipe_id,
@@ -45,7 +54,6 @@ def create_meal_plan(
     db.add(entry)
     db.commit()
     db.refresh(entry)
-    # Reload with recipe joined
     db.refresh(entry)
     return get_meal_plan_by_id(db, entry.id, user_id)
 

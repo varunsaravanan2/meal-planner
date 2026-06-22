@@ -21,7 +21,6 @@ function GeneratingScreen() {
     return () => clearInterval(id);
   }, []);
 
-  // Which step are we on
   let acc = 0;
   let activeStep = GEN_STEPS.length - 1;
   for (let i = 0; i < GEN_STEPS.length; i++) {
@@ -29,31 +28,25 @@ function GeneratingScreen() {
     acc += GEN_STEPS[i].duration;
   }
 
-  const progress = Math.min((elapsed / TOTAL_SECONDS) * 100, 96); // cap at 96 so it never "finishes" early
+  const progress = Math.min((elapsed / TOTAL_SECONDS) * 100, 96);
   const remaining = Math.max(0, Math.round(TOTAL_SECONDS - elapsed));
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: '#0a0a0a' }}>
       <div className="w-full max-w-sm">
-        {/* Animated logo */}
         <div className="flex justify-center mb-10">
           <div className="relative w-16 h-16">
             <div className="absolute inset-0 rounded-full" style={{ background: '#494fdf22', animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }} />
             <div className="relative w-16 h-16 rounded-full flex items-center justify-center font-black text-white text-xl" style={{ background: '#494fdf' }}>M</div>
           </div>
         </div>
-
         <h1 className="text-2xl font-black text-center mb-1" style={{ color: '#fff', letterSpacing: '-0.5px' }}>Building your plan</h1>
         <p className="text-sm text-center mb-8" style={{ color: 'rgba(255,255,255,0.35)' }}>
           {remaining > 0 ? `About ${remaining}s remaining` : 'Almost done…'}
         </p>
-
-        {/* Progress bar */}
         <div className="rounded-full overflow-hidden mb-8" style={{ height: 4, background: '#1a1a1a' }}>
           <div className="h-full rounded-full transition-all duration-100" style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #494fdf, #7c7fef)' }} />
         </div>
-
-        {/* Steps */}
         <div className="space-y-3">
           {GEN_STEPS.map((s, i) => {
             let stepAcc = 0;
@@ -68,9 +61,7 @@ function GeneratingScreen() {
                     : active
                       ? { background: '#1a1a2e', border: '2px solid #494fdf', color: '#494fdf' }
                       : { background: '#111', border: '1px solid #222', color: '#333' }}>
-                  {done ? '✓' : active ? (
-                    <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite', fontSize: 10 }}>◌</span>
-                  ) : ''}
+                  {done ? '✓' : active ? <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite', fontSize: 11 }}>◌</span> : ''}
                 </span>
                 <span className="text-sm font-medium transition-all" style={{ color: done ? 'rgba(255,255,255,0.7)' : active ? '#fff' : 'rgba(255,255,255,0.2)' }}>
                   {s.label}
@@ -80,7 +71,6 @@ function GeneratingScreen() {
           })}
         </div>
       </div>
-
       <style>{`
         @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -90,29 +80,23 @@ function GeneratingScreen() {
 }
 
 const STEPS = [
-  { title: "What's your main goal?",    sub: "We'll build your meal and workout plan around this." },
-  { title: "Tell us about yourself",     sub: "Used to calculate your daily calorie targets." },
-  { title: "How active are you?",        sub: "Be honest — we'll calibrate your plan to match." },
-  { title: "How do you train?",          sub: "We'll design workouts around what you have." },
-  { title: "Your diet preferences",      sub: "We'll only suggest meals you'll actually eat." },
-  { title: "In the kitchen",            sub: "So we don't recommend 2-hour recipes on a weeknight." },
+  { title: "What's your main goal?",   sub: "We'll build your meal and workout plan around this." },
+  { title: "Tell us about yourself",   sub: "Used to calculate your daily calorie and macro targets." },
+  { title: "Food & fitness basics",    sub: "The essentials — you can add more detail in your profile anytime." },
 ];
 
-const GOALS:      [string, string][] = [['lose_weight','Lose weight'],['maintain','Maintain'],['build_muscle','Build muscle'],['eat_healthier','Eat healthier'],['improve_performance','Improve performance']];
-const TIMELINES:  [string, string][] = [['no_rush','No rush'],['3_months','3 months'],['6_months','6 months']];
-const ACTIVITY:   [string, string][] = [['sedentary','Sedentary'],['lightly_active','Lightly active'],['moderately_active','Moderately active'],['very_active','Very active']];
-const FITNESS:    [string, string][] = [['beginner','Beginner'],['intermediate','Intermediate'],['advanced','Advanced']];
-const EQUIPMENT:  [string, string][] = [['none','Bodyweight only'],['dumbbells','Dumbbells'],['barbell','Barbell + rack'],['home_gym','Home gym'],['gym_membership','Gym membership']];
-const WTYPES:     [string, string][] = [['strength','Strength'],['cardio','Cardio'],['hiit','HIIT'],['yoga','Yoga'],['running','Running']];
-const DIETS:      [string, string][] = [['omnivore','Omnivore'],['vegetarian','Vegetarian'],['vegan','Vegan'],['pescatarian','Pescatarian'],['keto','Keto'],['paleo','Paleo']];
-const ALLERGIES:  [string, string][] = [['none','None'],['nuts','Nuts'],['gluten','Gluten'],['dairy','Dairy'],['eggs','Eggs'],['shellfish','Shellfish'],['soy','Soy']];
-const CUISINES:   [string, string][] = [['italian','Italian'],['asian','Asian'],['mexican','Mexican'],['mediterranean','Mediterranean'],['american','American'],['indian','Indian']];
-const COOK_TIMES: [string, string][] = [['<15','< 15 min'],['15-30','15–30 min'],['30-60','30–60 min'],['60+','60+ min']];
+const GOALS:     [string, string][] = [['lose_weight','Lose weight'],['maintain','Maintain'],['build_muscle','Build muscle'],['eat_healthier','Eat healthier'],['improve_performance','Improve performance']];
+const TIMELINES: [string, string][] = [['no_rush','No rush'],['3_months','3 months'],['6_months','6 months']];
+const ACTIVITY:  [string, string][] = [['sedentary','Sedentary'],['lightly_active','Lightly active'],['moderately_active','Moderately active'],['very_active','Very active']];
+const DIETS:     [string, string][] = [['omnivore','Omnivore'],['vegetarian','Vegetarian'],['vegan','Vegan'],['pescatarian','Pescatarian'],['keto','Keto'],['paleo','Paleo']];
+const ALLERGIES: [string, string][] = [['none','None'],['nuts','Nuts'],['gluten','Gluten'],['dairy','Dairy'],['eggs','Eggs'],['shellfish','Shellfish'],['soy','Soy']];
+const EQUIPMENT: [string, string][] = [['none','Bodyweight only'],['dumbbells','Dumbbells'],['barbell','Barbell + rack'],['home_gym','Home gym'],['gym_membership','Gym membership']];
+const COOK_TIMES:[string, string][] = [['<15','< 15 min'],['15-30','15–30 min'],['30-60','30–60 min'],['60+','60+ min']];
 
 const INPUT: React.CSSProperties = {
-  height: 52, padding: '0 16px', background: '#141414',
-  border: '1.5px solid #252525', borderRadius: 12,
-  color: '#fff', fontSize: 15, width: '100%', outline: 'none', boxSizing: 'border-box',
+  height: 58, padding: '0 18px', background: '#141414',
+  border: '1.5px solid #252525', borderRadius: 14,
+  color: '#fff', fontSize: 16, width: '100%', outline: 'none', boxSizing: 'border-box',
 };
 
 interface RadioProps { options: [string, string][]; value: string; onChange: (v: string) => void; }
@@ -121,7 +105,7 @@ function Radio({ options, value, onChange }: RadioProps) {
     <div className="flex flex-col gap-2">
       {options.map(([v, label]) => (
         <button key={v} type="button" onClick={() => onChange(v)}
-          className="text-left px-5 py-4 rounded-2xl font-semibold text-base transition-all"
+          className="text-left px-5 py-4 rounded-2xl font-semibold text-base transition-all cursor-pointer"
           style={value === v
             ? { background: '#494fdf', color: '#fff', border: '1.5px solid #494fdf' }
             : { background: '#141414', color: 'rgba(255,255,255,0.7)', border: '1.5px solid #252525' }}>
@@ -134,17 +118,18 @@ function Radio({ options, value, onChange }: RadioProps) {
 
 interface ChipsProps { options: [string, string][]; value: string[]; onChange: (v: string[]) => void; exclusive?: string; }
 function Chips({ options, value = [], onChange, exclusive }: ChipsProps) {
+  const safe = value ?? [];
   function toggle(v: string) {
     if (exclusive === v) { onChange([v]); return; }
-    const next = value.includes(v) ? value.filter(x => x !== v) : [...value.filter(x => x !== exclusive), v];
+    const next = safe.includes(v) ? safe.filter(x => x !== v) : [...safe.filter(x => x !== exclusive), v];
     onChange(next);
   }
   return (
     <div className="flex flex-wrap gap-2">
       {options.map(([v, label]) => (
         <button key={v} type="button" onClick={() => toggle(v)}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-          style={value.includes(v)
+          className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+          style={safe.includes(v)
             ? { background: '#494fdf', color: '#fff', border: '1.5px solid #494fdf' }
             : { background: '#141414', color: 'rgba(255,255,255,0.6)', border: '1.5px solid #252525' }}>
           {label}
@@ -154,8 +139,7 @@ function Chips({ options, value = [], onChange, exclusive }: ChipsProps) {
   );
 }
 
-interface TextInputProps { value: string; onChange: (v: string) => void; placeholder: string; numeric?: boolean; }
-function TextInput({ value, onChange, placeholder, numeric }: TextInputProps) {
+function TextInput({ value, onChange, placeholder, numeric }: { value: string; onChange: (v: string) => void; placeholder: string; numeric?: boolean }) {
   return (
     <input
       type="text" inputMode={numeric ? 'numeric' : 'text'}
@@ -177,14 +161,19 @@ function Label({ children, optional }: { children: React.ReactNode; optional?: b
   );
 }
 
+interface OnboardingForm {
+  primary_goal: string; timeline: string;
+  age: string; sex: string; height_ft: string; height_in: string; weight_lbs: string;
+  activity_level: string;
+  diet_type: string; allergies: string[];
+  equipment: string[]; max_cook_time: string;
+}
+
 function stepIsValid(step: number, form: OnboardingForm): boolean {
   switch (step) {
     case 0: return !!form.primary_goal;
-    case 1: return !!form.age && !!form.sex;
-    case 2: return !!form.activity_level;
-    case 3: return form.equipment.length > 0;
-    case 4: return !!form.diet_type && form.allergies.length > 0;
-    case 5: return !!form.cooking_skill && !!form.max_cook_time;
+    case 1: return !!form.age && !!form.sex && !!form.activity_level;
+    case 2: return !!form.diet_type && form.allergies.length > 0 && form.equipment.length > 0;
     default: return true;
   }
 }
@@ -192,22 +181,10 @@ function stepIsValid(step: number, form: OnboardingForm): boolean {
 function stepHint(step: number): string {
   switch (step) {
     case 0: return 'Select a goal to continue.';
-    case 1: return 'Enter your age and select a sex to continue.';
-    case 2: return 'Select your activity level to continue.';
-    case 3: return 'Select at least one equipment option to continue.';
-    case 4: return 'Select a diet type and at least one allergy option to continue.';
-    case 5: return 'Select your cooking skill and max cook time to continue.';
+    case 1: return 'Enter your age, select a sex, and pick your activity level.';
+    case 2: return 'Select a diet type, an allergy option, and equipment.';
     default: return '';
   }
-}
-
-interface OnboardingForm {
-  primary_goal: string; timeline: string;
-  age: string; sex: string; height_ft: string; height_in: string; weight_lbs: string; target_weight_lbs: string;
-  activity_level: string; fitness_level: string; workouts_per_week: string;
-  equipment: string[]; workout_types: string[]; injuries: string;
-  diet_type: string; allergies: string[]; cuisine_preferences: string[]; disliked_foods: string;
-  cooking_skill: string; max_cook_time: string; weekly_budget: string;
 }
 
 export default function OnboardingPage() {
@@ -220,15 +197,19 @@ export default function OnboardingPage() {
   const [showHint, setShowHint] = useState<boolean>(false);
   const [form, setForm] = useState<OnboardingForm>({
     primary_goal: '', timeline: '',
-    age: '', sex: '', height_ft: '', height_in: '', weight_lbs: '', target_weight_lbs: '',
-    activity_level: '', fitness_level: '', workouts_per_week: '',
-    equipment: [], workout_types: [], injuries: '',
-    diet_type: '', allergies: [], cuisine_preferences: [], disliked_foods: '',
-    cooking_skill: '', max_cook_time: '', weekly_budget: '',
+    age: '', sex: '', height_ft: '', height_in: '', weight_lbs: '',
+    activity_level: '',
+    diet_type: '', allergies: [],
+    equipment: [], max_cook_time: '',
   });
 
   function set<K extends keyof OnboardingForm>(k: K, v: OnboardingForm[K]) {
     setForm(f => ({ ...f, [k]: v }));
+  }
+
+  async function handleSkip() {
+    try { await saveProfile({}); } catch {}
+    router.push('/dashboard');
   }
 
   async function handleContinue() {
@@ -251,9 +232,7 @@ export default function OnboardingPage() {
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
-  if (done && generating) {
-    return <GeneratingScreen />;
-  }
+  if (done && generating) return <GeneratingScreen />;
 
   if (done) {
     return (
@@ -268,18 +247,21 @@ export default function OnboardingPage() {
           {saveError ? (
             <p className="text-sm mb-6 px-4 py-3 rounded-xl" style={{ color: '#fca5a5', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>{saveError}</p>
           ) : (
-            <p className="text-base mb-10" style={{ color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>
+            <p className="text-base mb-3" style={{ color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>
               Want us to generate a personalized meal and workout plan for this week right now?
             </p>
           )}
+          <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            You can add more preferences — cuisines, workout types, budget, and more — anytime from your Profile.
+          </p>
           <button onClick={handleGenerate}
-            className="w-full font-bold text-white mb-3"
-            style={{ height: 56, borderRadius: 14, background: '#494fdf', fontSize: 16 }}>
+            className="w-full font-bold text-white mb-3 cursor-pointer"
+            style={{ height: 62, borderRadius: 16, background: 'linear-gradient(135deg, #494fdf, #7c3aed)', border: 'none', fontSize: 17, boxShadow: '0 4px 16px rgba(99,102,241,0.35)' }}>
             Generate my plan now →
           </button>
-          <button onClick={() => router.push('/dashboard')}
-            className="w-full font-semibold"
-            style={{ height: 48, borderRadius: 14, background: 'transparent', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+          <button onClick={handleSkip}
+            className="w-full font-semibold cursor-pointer"
+            style={{ height: 54, borderRadius: 16, background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 15 }}>
             Skip for now
           </button>
         </div>
@@ -295,7 +277,7 @@ export default function OnboardingPage() {
       </div>
 
       <div className="w-full h-0.5" style={{ background: '#1a1a1a' }}>
-        <div className="h-full transition-all duration-300" style={{ width: `${progress}%`, background: '#494fdf' }} />
+        <div className="h-full transition-all duration-300" style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #494fdf, #7c7fef)' }} />
       </div>
 
       <div className="flex-1 flex flex-col px-8 py-10 max-w-lg w-full mx-auto">
@@ -304,21 +286,40 @@ export default function OnboardingPage() {
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{STEPS[step].sub}</p>
         </div>
 
-        <div className="flex-1 space-y-5">
+        <div className="flex-1 space-y-6">
           {step === 0 && <>
-            <div><Label>Primary goal</Label><Radio options={GOALS} value={form.primary_goal} onChange={v => { set('primary_goal', v); setShowHint(false); }} /></div>
-            <div><Label optional>Timeline</Label><Radio options={TIMELINES} value={form.timeline} onChange={v => set('timeline', v)} /></div>
+            <div>
+              <Label>Primary goal</Label>
+              <Radio options={GOALS} value={form.primary_goal} onChange={v => { set('primary_goal', v); setShowHint(false); }} />
+            </div>
+            <div>
+              <Label optional>Timeline</Label>
+              <div className="flex flex-wrap gap-2">
+                {TIMELINES.map(([v, label]) => (
+                  <button key={v} type="button" onClick={() => set('timeline', v)}
+                    className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+                    style={form.timeline === v
+                      ? { background: '#494fdf', color: '#fff', border: '1.5px solid #494fdf' }
+                      : { background: '#141414', color: 'rgba(255,255,255,0.6)', border: '1.5px solid #252525' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </>}
 
           {step === 1 && <>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Age</Label><TextInput numeric value={form.age} onChange={v => { set('age', v); setShowHint(false); }} placeholder="25" /></div>
+              <div>
+                <Label>Age</Label>
+                <TextInput numeric value={form.age} onChange={v => { set('age', v); setShowHint(false); }} placeholder="25" />
+              </div>
               <div>
                 <Label>Sex</Label>
                 <div className="flex gap-2">
                   {([['male','Male'],['female','Female'],['other','Other']] as [string,string][]).map(([v,l]) => (
                     <button key={v} type="button" onClick={() => { set('sex', v); setShowHint(false); }}
-                      className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all"
+                      className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer"
                       style={form.sex === v ? { background: '#494fdf', color: '#fff', border: '1.5px solid #494fdf' } : { background: '#141414', color: 'rgba(255,255,255,0.6)', border: '1.5px solid #252525' }}>
                       {l}
                     </button>
@@ -335,45 +336,60 @@ export default function OnboardingPage() {
                 <span className="text-sm font-semibold shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }}>in</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label optional>Weight (lbs)</Label><TextInput numeric value={form.weight_lbs} onChange={v => set('weight_lbs', v)} placeholder="170" /></div>
-              <div><Label optional>Target weight (lbs)</Label><TextInput numeric value={form.target_weight_lbs} onChange={v => set('target_weight_lbs', v)} placeholder="160" /></div>
+            <div>
+              <Label optional>Weight</Label>
+              <div className="flex items-center gap-2">
+                <TextInput numeric value={form.weight_lbs} onChange={v => set('weight_lbs', v)} placeholder="170" />
+                <span className="text-sm font-semibold shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }}>lbs</span>
+              </div>
+            </div>
+            <div>
+              <Label>Activity level</Label>
+              <div className="flex flex-col gap-2">
+                {ACTIVITY.map(([v, label]) => (
+                  <button key={v} type="button" onClick={() => { set('activity_level', v); setShowHint(false); }}
+                    className="text-left px-5 py-3.5 rounded-2xl font-semibold text-sm transition-all cursor-pointer"
+                    style={form.activity_level === v
+                      ? { background: '#494fdf', color: '#fff', border: '1.5px solid #494fdf' }
+                      : { background: '#141414', color: 'rgba(255,255,255,0.7)', border: '1.5px solid #252525' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </>}
 
           {step === 2 && <>
-            <div><Label>Activity level</Label><Radio options={ACTIVITY} value={form.activity_level} onChange={v => { set('activity_level', v); setShowHint(false); }} /></div>
-            <div><Label optional>Fitness level</Label><Radio options={FITNESS} value={form.fitness_level} onChange={v => set('fitness_level', v)} /></div>
-            <div><Label optional>Workouts per week</Label><TextInput numeric value={form.workouts_per_week} onChange={v => set('workouts_per_week', v)} placeholder="3" /></div>
-          </>}
-
-          {step === 3 && <>
-            <div><Label>Equipment available</Label><Chips options={EQUIPMENT} value={form.equipment} exclusive="none" onChange={v => { set('equipment', v); setShowHint(false); }} /></div>
-            <div><Label optional>Workout types</Label><Chips options={WTYPES} value={form.workout_types} onChange={v => set('workout_types', v)} /></div>
-            <div><Label optional>Injuries or limitations</Label><TextInput value={form.injuries} onChange={v => set('injuries', v)} placeholder="e.g. bad knees, lower back" /></div>
-          </>}
-
-          {step === 4 && <>
-            <div><Label>Diet type</Label>
+            <div>
+              <Label>Diet type</Label>
               <Chips options={DIETS} value={form.diet_type ? [form.diet_type] : []}
-                onChange={v => { set('diet_type', v[v.length - 1] || ''); setShowHint(false); }} /></div>
-            <div><Label>Allergies</Label>
+                onChange={v => { set('diet_type', v[v.length - 1] || ''); setShowHint(false); }} />
+            </div>
+            <div>
+              <Label>Allergies</Label>
               <Chips options={ALLERGIES} value={form.allergies} exclusive="none"
                 onChange={v => {
                   const last = v[v.length - 1];
                   set('allergies', last === 'none' ? ['none'] : v.filter(x => x !== 'none'));
                   setShowHint(false);
-                }} /></div>
-            <div><Label optional>Cuisine preferences</Label><Chips options={CUISINES} value={form.cuisine_preferences} onChange={v => set('cuisine_preferences', v)} /></div>
-            <div><Label optional>Foods you dislike</Label><TextInput value={form.disliked_foods} onChange={v => set('disliked_foods', v)} placeholder="e.g. olives, blue cheese" /></div>
-          </>}
-
-          {step === 5 && <>
-            <div><Label>Cooking skill</Label><Radio options={FITNESS} value={form.cooking_skill} onChange={v => { set('cooking_skill', v); setShowHint(false); }} /></div>
-            <div><Label>Max time to cook</Label>
+                }} />
+            </div>
+            <div>
+              <Label>Equipment available</Label>
+              <Chips options={EQUIPMENT} value={form.equipment} exclusive="none"
+                onChange={v => { set('equipment', v); setShowHint(false); }} />
+            </div>
+            <div>
+              <Label optional>Max time to cook</Label>
               <Chips options={COOK_TIMES} value={form.max_cook_time ? [form.max_cook_time] : []}
-                onChange={v => { set('max_cook_time', v[v.length - 1] || ''); setShowHint(false); }} /></div>
-            <div><Label optional>Weekly food budget</Label><TextInput numeric value={form.weekly_budget} onChange={v => set('weekly_budget', v)} placeholder="$100" /></div>
+                onChange={v => set('max_cook_time', v[v.length - 1] || '')} />
+            </div>
+            <div className="rounded-2xl px-4 py-3 flex items-start gap-3" style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 1, flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                You can add more preferences — cuisines, workout types, cooking skill, and budget — anytime from your <span style={{ color: 'rgba(99,102,241,0.8)' }}>Profile</span>.
+              </p>
+            </div>
           </>}
         </div>
 
@@ -384,21 +400,21 @@ export default function OnboardingPage() {
             </p>
           )}
           <button onClick={handleContinue} disabled={saving}
-            className="w-full font-bold text-white disabled:opacity-50"
-            style={{ height: 56, borderRadius: 14, background: '#494fdf', fontSize: 16 }}>
+            className="w-full font-bold text-white disabled:opacity-50 cursor-pointer"
+            style={{ height: 62, borderRadius: 16, background: 'linear-gradient(135deg, #494fdf, #7c3aed)', border: 'none', fontSize: 17, boxShadow: '0 4px 16px rgba(99,102,241,0.3)' }}>
             {saving ? 'Saving…' : step === STEPS.length - 1 ? 'Finish →' : 'Continue →'}
           </button>
           {step > 0 && (
             <button onClick={() => setStep(s => s - 1)}
-              className="w-full font-semibold"
-              style={{ height: 44, borderRadius: 14, background: 'transparent', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+              className="w-full font-semibold cursor-pointer"
+              style={{ height: 50, borderRadius: 16, background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 15 }}>
               Back
             </button>
           )}
           {step === 0 && (
-            <button onClick={() => router.push('/dashboard')}
-              className="w-full font-semibold"
-              style={{ height: 44, borderRadius: 14, background: 'transparent', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+            <button onClick={handleSkip}
+              className="w-full font-semibold cursor-pointer"
+              style={{ height: 50, borderRadius: 16, background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 15 }}>
               Skip for now
             </button>
           )}

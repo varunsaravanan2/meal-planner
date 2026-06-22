@@ -19,8 +19,8 @@ const COOK_TIMES: [string, string][] = [['<15','< 15 min'],['15-30','15–30 min
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-5">
-      <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: '#8d969e' }}>{children}</h2>
-      <div className="flex-1 h-px" style={{ background: '#f0f0f2' }} />
+      <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>{children}</h2>
+      <div className="flex-1 h-px" style={{ background: 'var(--border-soft)' }} />
     </div>
   );
 }
@@ -28,7 +28,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mb-4">
-      <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#8d969e' }}>{label}</label>
+      <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>{label}</label>
       {children}
     </div>
   );
@@ -41,9 +41,9 @@ function TextInput({ value, onChange, placeholder, numeric }: { value: string | 
       value={value ?? ''} placeholder={placeholder}
       onChange={e => onChange(e.target.value)}
       className="w-full text-sm focus:outline-none"
-      style={{ height: 44, padding: '0 14px', border: '1.5px solid #e2e2e7', borderRadius: 10, color: '#191c1f', background: '#fff' }}
-      onFocus={e => e.currentTarget.style.borderColor = '#494fdf'}
-      onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'}
+      style={{ height: 38, padding: '0 12px', border: '1.5px solid var(--border-color)', borderRadius: 9, color: 'var(--text-primary)', background: 'var(--bg-input)' }}
+      onFocus={e => e.currentTarget.style.borderColor = '#3b82f6'}
+      onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
     />
   );
 }
@@ -53,10 +53,10 @@ function Radio({ options, value, onChange }: { options: [string, string][]; valu
     <div className="flex flex-wrap gap-2">
       {options.map(([v, label]) => (
         <button key={v} type="button" onClick={() => onChange(v)}
-          className="px-3.5 py-2 rounded-xl text-sm font-semibold transition-all"
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
           style={value === v
-            ? { background: '#191c1f', color: '#fff', border: '1.5px solid #191c1f' }
-            : { background: '#fff', color: '#505a63', border: '1.5px solid #e2e2e7' }}>
+            ? { background: '#3b82f6', color: '#fff', border: '1.5px solid #3b82f6' }
+            : { background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1.5px solid var(--border-color)' }}>
           {label}
         </button>
       ))}
@@ -64,18 +64,19 @@ function Radio({ options, value, onChange }: { options: [string, string][]; valu
   );
 }
 
-function Chips({ options, value = [], onChange }: { options: [string, string][]; value: string[]; onChange: (v: string[]) => void }) {
+function Chips({ options, value, onChange }: { options: [string, string][]; value: string[] | null | undefined; onChange: (v: string[]) => void }) {
+  const safe = value ?? [];
   function toggle(v: string) {
-    onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v]);
+    onChange(safe.includes(v) ? safe.filter(x => x !== v) : [...safe, v]);
   }
   return (
     <div className="flex flex-wrap gap-2">
       {options.map(([v, label]) => (
         <button key={v} type="button" onClick={() => toggle(v)}
-          className="px-3.5 py-2 rounded-xl text-sm font-semibold transition-all"
-          style={value.includes(v)
-            ? { background: '#494fdf', color: '#fff', border: '1.5px solid #494fdf' }
-            : { background: '#fff', color: '#505a63', border: '1.5px solid #e2e2e7' }}>
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          style={safe.includes(v)
+            ? { background: '#3b82f6', color: '#fff', border: '1.5px solid #3b82f6' }
+            : { background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1.5px solid var(--border-color)' }}>
           {label}
         </button>
       ))}
@@ -140,15 +141,17 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <div className="flex items-start justify-between mb-6">
+    <div className="p-5 max-w-2xl mx-auto">
+      <div className="flex items-start justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-black" style={{ color: '#191c1f', letterSpacing: '-0.5px' }}>Profile settings</h1>
-          <p className="text-sm mt-1" style={{ color: '#8d969e' }}>Personalizes your meal plan and workouts.</p>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>Profile settings</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>Personalizes your meal plan and workouts.</p>
         </div>
         <button type="button" onClick={handleGenerate} disabled={generating || saving}
-          className="flex items-center gap-2 font-semibold text-white disabled:opacity-50 text-sm px-4"
-          style={{ height: 40, borderRadius: 10, background: '#494fdf', whiteSpace: 'nowrap' }}>
+          className="flex items-center gap-2 font-semibold text-white disabled:opacity-50 text-xs px-3"
+          style={{ height: 36, borderRadius: 9, background: 'linear-gradient(135deg, #3b82f6, #2563eb)', boxShadow: '0 3px 10px rgba(59,130,246,0.3)', whiteSpace: 'nowrap', border: 'none', cursor: 'pointer' }}
+          onMouseEnter={e => e.currentTarget.style.boxShadow = '0 5px 16px rgba(59,130,246,0.45)'}
+          onMouseLeave={e => e.currentTarget.style.boxShadow = '0 3px 10px rgba(59,130,246,0.3)'}>
           {generating ? 'Generating…' : '✦ Regenerate plan'}
         </button>
       </div>
@@ -158,7 +161,7 @@ export default function ProfilePage() {
       )}
 
       <form onSubmit={handleSave} className="space-y-6">
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8e8ec', padding: '24px 28px' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: 14, boxShadow: 'var(--shadow-card)', padding: '18px 22px' }}>
           <SectionTitle>Personal</SectionTitle>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Age"><TextInput numeric value={form.age} onChange={v => set('age', v)} placeholder="25" /></Field>
@@ -167,9 +170,9 @@ export default function ProfilePage() {
           <Field label="Height">
             <div className="flex items-center gap-2">
               <TextInput numeric value={form.height_ft} onChange={v => set('height_ft', v)} placeholder="5" />
-              <span className="text-sm font-medium shrink-0" style={{ color: '#8d969e' }}>ft</span>
+              <span className="text-sm font-medium shrink-0" style={{ color: 'var(--text-tertiary)' }}>ft</span>
               <TextInput numeric value={form.height_in} onChange={v => set('height_in', v)} placeholder="10" />
-              <span className="text-sm font-medium shrink-0" style={{ color: '#8d969e' }}>in</span>
+              <span className="text-sm font-medium shrink-0" style={{ color: 'var(--text-tertiary)' }}>in</span>
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-4">
@@ -178,13 +181,13 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8e8ec', padding: '24px 28px' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: 14, boxShadow: 'var(--shadow-card)', padding: '18px 22px' }}>
           <SectionTitle>Goals</SectionTitle>
           <Field label="Primary goal"><Radio options={GOALS} value={form.primary_goal} onChange={v => set('primary_goal', v)} /></Field>
           <Field label="Timeline"><Radio options={TIMELINES} value={form.timeline} onChange={v => set('timeline', v)} /></Field>
         </div>
 
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8e8ec', padding: '24px 28px' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: 14, boxShadow: 'var(--shadow-card)', padding: '18px 22px' }}>
           <SectionTitle>Activity & Fitness</SectionTitle>
           <Field label="Activity level"><Radio options={ACTIVITY} value={form.activity_level} onChange={v => set('activity_level', v)} /></Field>
           <Field label="Fitness level"><Radio options={FITNESS} value={form.fitness_level} onChange={v => set('fitness_level', v)} /></Field>
@@ -194,7 +197,7 @@ export default function ProfilePage() {
           <Field label="Injuries or limitations (optional)"><TextInput value={form.injuries} onChange={v => set('injuries', v)} placeholder="e.g. bad knees, lower back" /></Field>
         </div>
 
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8e8ec', padding: '24px 28px' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: 14, boxShadow: 'var(--shadow-card)', padding: '18px 22px' }}>
           <SectionTitle>Diet</SectionTitle>
           <Field label="Diet type">
             <Chips options={DIETS} value={form.diet_type ? [form.diet_type] : []} onChange={v => set('diet_type', v[v.length - 1] || '')} />
@@ -210,7 +213,7 @@ export default function ProfilePage() {
           <Field label="Foods you dislike (optional)"><TextInput value={form.disliked_foods} onChange={v => set('disliked_foods', v)} placeholder="e.g. olives, blue cheese" /></Field>
         </div>
 
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8e8ec', padding: '24px 28px' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: 14, boxShadow: 'var(--shadow-card)', padding: '18px 22px' }}>
           <SectionTitle>Cooking</SectionTitle>
           <Field label="Cooking skill"><Radio options={FITNESS} value={form.cooking_skill} onChange={v => set('cooking_skill', v)} /></Field>
           <Field label="Max time to cook"><Radio options={COOK_TIMES} value={form.max_cook_time} onChange={v => set('max_cook_time', v)} /></Field>
@@ -218,9 +221,9 @@ export default function ProfilePage() {
         </div>
 
         <button type="submit" disabled={saving || generating}
-          className="w-full font-bold text-white disabled:opacity-50"
-          style={{ height: 52, borderRadius: 12, background: '#191c1f', fontSize: 15 }}>
-          {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
+          className="w-full font-bold text-white disabled:opacity-50 transition-all"
+          style={{ height: 44, borderRadius: 10, background: saved ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', fontSize: 14, border: 'none', cursor: 'pointer', boxShadow: saved ? '0 3px 12px rgba(16,185,129,0.3)' : '0 3px 12px rgba(59,130,246,0.3)' }}>
+          {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save changes'}
         </button>
       </form>
       <div className="h-10" />
