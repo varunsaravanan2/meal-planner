@@ -9,6 +9,7 @@ import {
   type SubscriptionStatus, type PlanSnapshot, type ExerciseEntry, type WorkoutTemplate,
 } from '@/lib/api';
 import type { MealPlanEntry, Recipe, WorkoutPlan, NutritionInfo } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ── constants ──────────────────────────────────────────────────────────────────
 
@@ -264,10 +265,12 @@ function WorkoutModal({ date, existing, onClose, onSaved }: {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: MUTED, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Type</label>
-                  <select value={form.workout_type} onChange={e => setField('workout_type', e.target.value)} style={inp}>
-                    <option value="">Select…</option>
-                    {WORKOUT_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                  </select>
+                  <Select value={form.workout_type || undefined} onValueChange={v => setField('workout_type', v)}>
+                    <SelectTrigger size="lg" className="w-full"><SelectValue placeholder="Select…" /></SelectTrigger>
+                    <SelectContent>
+                      {WORKOUT_TYPES.map(t => <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: MUTED, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Duration (min)</label>
@@ -388,6 +391,11 @@ export default function DashboardPage() {
     try { return new Set<string>(JSON.parse(localStorage.getItem('meal_completions') || '[]')); }
     catch { return new Set<string>(); }
   });
+  const [workoutCompletions, setWorkoutCompletions] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    try { return JSON.parse(localStorage.getItem('workout_completions') || '{}'); }
+    catch { return {}; }
+  });
 
   const weekDays = Array.from({ length: 7 }, (_, i) => toIso(addDays(monday, i)));
   const today = toIso(new Date());
@@ -432,6 +440,15 @@ export default function DashboardPage() {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       try { localStorage.setItem('meal_completions', JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }
+
+  function toggleWorkoutCompletion(date: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setWorkoutCompletions(prev => {
+      const next = { ...prev, [date]: !prev[date] };
+      try { localStorage.setItem('workout_completions', JSON.stringify(next)); } catch {}
       return next;
     });
   }
@@ -550,29 +567,51 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Workout slot */}
-                  <div className="slot-cell" style={{ padding: '9px 10px', borderBottom: `1px solid ${BORDER}`, minHeight: 62, position: 'relative' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: BLUE, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.4 14.4 9.6 9.6"/><path d="M18 3v4"/><path d="M6 3v4"/><path d="M3 6h4"/><path d="M17 20h4"/><path d="M3 18h4"/><path d="M6 21v-4"/><path d="M18 21v-4"/><path d="M20.4 9.6l-7.7 7.7a2 2 0 0 1-2.8 0L5.5 12.9a2 2 0 0 1 0-2.8l7.7-7.7a2 2 0 0 1 2.8 0l4.4 4.4a2 2 0 0 1 0 2.8z"/></svg>
-                        Workout
-                      </span>
-                      <span style={{ fontSize: 10, color: DIM, fontWeight: 600 }}>{w && !w.is_rest_day ? '1/1' : '0/1'}</span>
-                    </div>
-                    {w ? (
-                      w.is_rest_day ? (
-                        <p style={{ fontSize: 11, color: MUTED, fontStyle: 'italic' }}>Rest day</p>
-                      ) : (
-                        <button onClick={() => setSelectedWorkout(w)} style={{ width: '100%', textAlign: 'left', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer' }}>
-                          <p style={{ fontSize: 11, fontWeight: 700, color: BLUE, lineHeight: 1.3 }} className="truncate">{w.title}</p>
-                          {w.duration_minutes && <p style={{ fontSize: 10, color: `${BLUE}99`, marginTop: 1 }}>{w.duration_minutes} min</p>}
-                        </button>
-                      )
-                    ) : (
-                      <button className="add-row" onClick={() => setWorkoutDate(day)} style={{ width: '100%', textAlign: 'left', fontSize: 11, color: MUTED, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: 13 }}>+</span> Add workout
-                      </button>
-                    )}
-                  </div>
+                  {(() => {
+                    const wDone = !!workoutCompletions[day];
+                    return (
+                      <div className="slot-cell" style={{ padding: '9px 10px', borderBottom: `1px solid ${BORDER}`, minHeight: 62, position: 'relative' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5 }}>
+                          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: wDone ? '#22c55e' : BLUE, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={wDone ? '#22c55e' : BLUE} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.4 14.4 9.6 9.6"/><path d="M18 3v4"/><path d="M6 3v4"/><path d="M3 6h4"/><path d="M17 20h4"/><path d="M3 18h4"/><path d="M6 21v-4"/><path d="M18 21v-4"/><path d="M20.4 9.6l-7.7 7.7a2 2 0 0 1-2.8 0L5.5 12.9a2 2 0 0 1 0-2.8l7.7-7.7a2 2 0 0 1 2.8 0l4.4 4.4a2 2 0 0 1 0 2.8z"/></svg>
+                            Workout
+                          </span>
+                        </div>
+                        {w ? (
+                          w.is_rest_day ? (
+                            <p style={{ fontSize: 11, color: MUTED, fontStyle: 'italic' }}>Rest day</p>
+                          ) : (
+                            <div className="meal-entry" style={{
+                              position: 'relative', background: wDone ? 'rgba(34,197,94,0.04)' : 'rgba(59,130,246,0.04)',
+                              border: `1px solid ${BORDER}`, borderLeft: `2.5px solid ${wDone ? '#22c55e' : 'rgba(59,130,246,0.5)'}`,
+                              borderRadius: 7, padding: '5px 7px 5px 8px',
+                              cursor: 'pointer', transition: 'opacity 0.2s',
+                            }} onClick={() => setSelectedWorkout(w)}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                                <p style={{ fontSize: 11, fontWeight: 600, color: wDone ? MUTED : TEXT, lineHeight: 1.3, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</p>
+                                <button onClick={e => toggleWorkoutCompletion(day, e)}
+                                  style={{ width: 15, height: 15, borderRadius: '50%', border: `1.5px solid ${wDone ? '#22c55e' : 'rgba(59,130,246,0.6)'}`, background: wDone ? '#22c55e' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', padding: 0 }}>
+                                  {wDone && <svg width="7" height="7" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,6 4.5,9.5 10.5,2.5"/></svg>}
+                                </button>
+                              </div>
+                              {wDone && w.duration_minutes && (
+                                <p style={{ fontSize: 10, color: DIM, marginTop: 1 }}>{w.duration_minutes} min</p>
+                              )}
+                              <button onClick={e => { e.stopPropagation(); deleteWorkoutEntry(w.id).then(() => fetchWorkouts()).catch(() => {}); }}
+                                className="del-btn"
+                                style={{ position: 'absolute', top: -4, left: -4, width: 14, height: 14, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-soft)', border: `1px solid ${BORDER}`, cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s' }}>
+                                <svg width="6" height="6" viewBox="0 0 12 12" fill="none" stroke={MUTED} strokeWidth="2.5" strokeLinecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
+                              </button>
+                            </div>
+                          )
+                        ) : (
+                          <button className="add-row" onClick={() => setWorkoutDate(day)} style={{ width: '100%', textAlign: 'left', fontSize: 11, color: MUTED, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 13 }}>+</span> Add workout
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Meal slots */}
                   {SLOTS.map((slot) => {
@@ -791,11 +830,12 @@ export default function DashboardPage() {
                           </p>
                           <p style={{ fontSize: 11, color: DIM }}>{slotMatches.length} available</p>
                         </div>
-                        <select value={selectedRecipeId} onChange={e => setSelectedRecipeId(e.target.value)}
-                          style={{ width: '100%', height: 48, padding: '0 14px', border: `1px solid ${BORDER}`, borderRadius: 10, color: selectedRecipeId ? TEXT : MUTED, background: 'var(--bg-soft)', fontSize: 14, outline: 'none' }}>
-                          <option value="">Choose a recipe…</option>
-                          {slotMatches.map(r => <option key={r.id} value={r.id}>{r.title}</option>)}
-                        </select>
+                        <Select value={selectedRecipeId || undefined} onValueChange={setSelectedRecipeId}>
+                          <SelectTrigger size="lg" className="w-full"><SelectValue placeholder="Choose a recipe…" /></SelectTrigger>
+                          <SelectContent>
+                            {slotMatches.map(r => <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </>
                     )}
                   </div>

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getRecipes, searchRecipes, createRecipe, extractRecipeFromText, extractRecipeFromUrl, deleteRecipe, isLoggedIn } from '@/lib/api';
+import { getRecipes, searchRecipes, createRecipe, updateRecipe, extractRecipeFromText, extractRecipeFromUrl, deleteRecipe, isLoggedIn, getSubscriptionStatus, type SubscriptionStatus } from '@/lib/api';
 import type { Recipe, NutritionInfo } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CATEGORY_COLORS: Record<string, { color: string; bg: string }> = {
   breakfast: { color: '#f59e0b', bg: '#fffbeb' },
@@ -11,6 +12,7 @@ const CATEGORY_COLORS: Record<string, { color: string; bg: string }> = {
   dinner:    { color: '#6366f1', bg: '#eef2ff' },
   snack:     { color: '#f43f5e', bg: '#fff1f2' },
   dessert:   { color: '#8b5cf6', bg: '#f5f3ff' },
+  packaged:  { color: '#0ea5e9', bg: '#f0f9ff' },
 };
 const DEFAULT_COLORS = { color: '#8d969e', bg: '#f4f4f4' };
 
@@ -57,6 +59,12 @@ function CategoryBadge({ category }: { category: string | null }) {
 interface RecipeForm {
   title: string; description: string; category: string; cuisine: string;
   prep_time: string; cook_time: string; servings: string; ingredients: string; steps: string;
+  calories: string; protein_g: string;
+}
+
+interface PkgForm {
+  name: string; brand: string; servings: string; category: string;
+  calories: string; protein_g: string; carbs_g: string; fat_g: string; sodium_mg: string;
 }
 
 export default function RecipesPage() {
@@ -66,7 +74,9 @@ export default function RecipesPage() {
   const [query, setQuery] = useState<string>('');
   const [showAdd, setShowAdd] = useState<boolean>(false);
   const [tab, setTab] = useState<string>('manual');
-  const [form, setForm] = useState<RecipeForm>({ title: '', description: '', category: '', cuisine: '', prep_time: '', cook_time: '', servings: '', ingredients: '', steps: '' });
+  const [form, setForm] = useState<RecipeForm>({ title: '', description: '', category: '', cuisine: '', prep_time: '', cook_time: '', servings: '', ingredients: '', steps: '', calories: '', protein_g: '' });
+  const [pkgForm, setPkgForm] = useState<PkgForm>({ name: '', brand: '', servings: '', category: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', sodium_mg: '' });
+  const [scanning, setScanning] = useState<boolean>(false);
   const [aiText, setAiText] = useState<string>('');
   const [aiUrl, setAiUrl] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
@@ -74,8 +84,16 @@ export default function RecipesPage() {
   const [selected, setSelected] = useState<Recipe | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
   const [modalTop, setModalTop] = useState<number>(0);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
 
-  useEffect(() => { if (!isLoggedIn()) { router.push('/login'); return; } loadRecipes(); }, [router]);
+  useEffect(() => {
+    if (!isLoggedIn()) { router.push('/login'); return; }
+    loadRecipes();
+    getSubscriptionStatus().then(setSubStatus).catch(() => {});
+  }, [router]);
+
+  const isPremiumLocked = subStatus !== null && subStatus.plan_type === 'free';
 
   async function loadRecipes() {
     setLoading(true);
@@ -97,23 +115,102 @@ export default function RecipesPage() {
     }).filter(i => i.name);
   }
 
+  function openEdit(r: Recipe) {
+    setEditingRecipe(r);
+    setForm({
+      title: r.title ?? '',
+      description: r.description ?? '',
+      category: r.category ?? '',
+      cuisine: r.cuisine ?? '',
+      prep_time: r.prep_time != null ? String(r.prep_time) : '',
+      cook_time: r.cook_time != null ? String(r.cook_time) : '',
+      servings: r.servings != null ? String(r.servings) : '',
+      ingredients: r.ingredients?.map(i => `${i.quantity} ${i.unit} ${i.name}`.trim()).join('\n') ?? '',
+      steps: r.steps?.join('\n') ?? '',
+      calories: r.nutrition?.calories != null ? String(r.nutrition.calories) : '',
+      protein_g: r.nutrition?.protein_g != null ? String(r.nutrition.protein_g) : '',
+    });
+    setSelected(null);
+    setTab('manual');
+    setError('');
+    setShowAdd(true);
+  }
+
   async function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault(); setError(''); setSaving(true);
+    const payload = {
+      title: form.title, description: form.description || null,
+      category: form.category || null, cuisine: form.cuisine || null,
+      prep_time: form.prep_time ? Number(form.prep_time) : null,
+      cook_time: form.cook_time ? Number(form.cook_time) : null,
+      servings: form.servings ? Number(form.servings) : null,
+      ingredients: parseIngredients(form.ingredients),
+      steps: form.steps.split('\n').map(s => s.trim()).filter(Boolean),
+      nutrition: (form.calories || form.protein_g) ? {
+        calories: form.calories ? Number(form.calories) : null,
+        protein_g: form.protein_g ? Number(form.protein_g) : null,
+      } : null,
+    };
     try {
-      await createRecipe({
-        title: form.title, description: form.description || null,
-        category: form.category || null, cuisine: form.cuisine || null,
-        prep_time: form.prep_time ? Number(form.prep_time) : null,
-        cook_time: form.cook_time ? Number(form.cook_time) : null,
-        servings: form.servings ? Number(form.servings) : null,
-        ingredients: parseIngredients(form.ingredients),
-        steps: form.steps.split('\n').map(s => s.trim()).filter(Boolean),
-      });
+      if (editingRecipe) {
+        await updateRecipe(editingRecipe.id, payload);
+      } else {
+        await createRecipe(payload);
+      }
       setShowAdd(false);
-      setForm({ title: '', description: '', category: '', cuisine: '', prep_time: '', cook_time: '', servings: '', ingredients: '', steps: '' });
+      setEditingRecipe(null);
+      setForm({ title: '', description: '', category: '', cuisine: '', prep_time: '', cook_time: '', servings: '', ingredients: '', steps: '', calories: '', protein_g: '' });
       loadRecipes();
     } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
+  }
+
+  async function handlePkgSubmit(e: React.FormEvent) {
+    e.preventDefault(); setError(''); setSaving(true);
+    try {
+      await createRecipe({
+        title: pkgForm.name,
+        description: pkgForm.brand || null,
+        category: pkgForm.category || null,
+        servings: pkgForm.servings ? Number(pkgForm.servings) : null,
+        ingredients: [], steps: [],
+        nutrition: {
+          calories: pkgForm.calories ? Number(pkgForm.calories) : null,
+          protein_g: pkgForm.protein_g ? Number(pkgForm.protein_g) : null,
+          carbs_g: pkgForm.carbs_g ? Number(pkgForm.carbs_g) : null,
+          fat_g: pkgForm.fat_g ? Number(pkgForm.fat_g) : null,
+          sodium_mg: pkgForm.sodium_mg ? Number(pkgForm.sodium_mg) : null,
+        },
+      });
+      setShowAdd(false);
+      setPkgForm({ name: '', brand: '', servings: '', category: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', sodium_mg: '' });
+      loadRecipes();
+    } catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
+  }
+
+  async function handleScan(file: File) {
+    setScanning(true); setError('');
+    try {
+      const token = localStorage.getItem('token');
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('http://localhost:8000/api/v1/recipes/scan-label', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body,
+      });
+      if (!res.ok) throw new Error('Scan failed — try entering values manually.');
+      const data = await res.json();
+      setPkgForm(f => ({
+        ...f,
+        name: data.name || f.name,
+        calories:   data.calories   != null ? String(data.calories)   : f.calories,
+        protein_g:  data.protein_g  != null ? String(data.protein_g)  : f.protein_g,
+        carbs_g:    data.carbs_g    != null ? String(data.carbs_g)    : f.carbs_g,
+        fat_g:      data.fat_g      != null ? String(data.fat_g)      : f.fat_g,
+        sodium_mg:  data.sodium_mg  != null ? String(data.sodium_mg)  : f.sodium_mg,
+      }));
+    } catch (e) { setError((e as Error).message); }
+    finally { setScanning(false); }
   }
 
   async function handleAiSubmit(e: React.FormEvent) {
@@ -311,16 +408,28 @@ export default function RecipesPage() {
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setConfirmDelete(true)}
-                  className="w-full text-sm font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                  style={{ color: '#e23b4a', border: '1px solid #fecdd3', background: 'var(--bg-card)' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#fff1f2'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card)'}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                  </svg>
-                  Delete recipe
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => openEdit(selected)}
+                    className="flex-1 text-sm font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    style={{ color: 'var(--text-primary)', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-soft)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card)'}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Edit
+                  </button>
+                  <button onClick={() => setConfirmDelete(true)}
+                    className="flex-1 text-sm font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    style={{ color: '#e23b4a', border: '1px solid #fecdd3', background: 'var(--bg-card)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#fff1f2'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card)'}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                    Delete
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -328,21 +437,23 @@ export default function RecipesPage() {
       )}
 
       {showAdd && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => setShowAdd(false)}>
+        <div className="fixed inset-0 flex items-start justify-center z-50 px-4 pb-4 pt-14" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', overflowY: 'auto' }} onClick={() => { setShowAdd(false); setEditingRecipe(null); }}>
           <div className="w-full max-w-lg flex flex-col" onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', borderRadius: 22, maxHeight: '90vh', boxShadow: '0 24px 64px rgba(0,0,0,0.15)' }}>
             <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-soft)' }}>
-              <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Add Recipe</h3>
-              <button onClick={() => setShowAdd(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ color: 'var(--text-tertiary)', background: 'var(--bg-soft)' }}>✕</button>
+              <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{editingRecipe ? 'Edit Recipe' : 'Add Recipe'}</h3>
+              <button onClick={() => { setShowAdd(false); setEditingRecipe(null); }} className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ color: 'var(--text-tertiary)', background: 'var(--bg-soft)' }}>✕</button>
             </div>
-            <div className="flex gap-1 p-2 mx-6 mt-4 rounded-xl mb-1" style={{ background: 'var(--bg-soft)' }}>
-              {([['manual','Manual'],['ai','AI Extract'],['url','Instagram URL']] as [string,string][]).map(([key, label]) => (
-                <button key={key} onClick={() => { setTab(key); setError(''); }}
-                  className="flex-1 py-2 text-sm font-semibold rounded-lg transition-all"
-                  style={tab === key ? { background: 'var(--bg-card)', color: 'var(--text-primary)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } : { color: 'var(--text-tertiary)', background: 'transparent' }}>
-                  {label}
-                </button>
-              ))}
-            </div>
+            {!editingRecipe && (
+              <div className="flex gap-1 p-2 mx-6 mt-4 rounded-xl mb-1" style={{ background: 'var(--bg-soft)' }}>
+                {([['manual','Manual'],['packaged','Packaged'],['ai','AI Extract'],['url','URL']] as [string,string][]).map(([key, label]) => (
+                  <button key={key} onClick={() => { setTab(key); setError(''); }}
+                    className="flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all"
+                    style={tab === key ? { background: 'var(--bg-card)', color: 'var(--text-primary)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } : { color: 'var(--text-tertiary)', background: 'transparent' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="overflow-y-auto px-6 py-4">
               {error && <div className="mb-4 text-sm px-4 py-3 rounded-xl" style={{ color: '#e23b4a', background: '#fff1f2', border: '1px solid #fecdd3' }}>{error}</div>}
               {tab === 'manual' ? (
@@ -358,10 +469,12 @@ export default function RecipesPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Category</label>
-                      <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={inp}>
-                        <option value="">—</option>
-                        {['breakfast','lunch','dinner','snack','dessert'].map(c => <option key={c}>{c}</option>)}
-                      </select>
+                      <Select value={form.category || undefined} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
+                        <SelectTrigger size="lg" className="w-full"><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          {['breakfast','lunch','dinner','snack'].map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Cuisine</label>
@@ -390,28 +503,165 @@ export default function RecipesPage() {
                       onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
                       onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
                   </div>
+                  <div style={{ paddingTop: 4 }}>
+                    <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Nutrition <span className="normal-case font-normal" style={{ color: 'var(--text-placeholder)' }}>(optional, per serving)</span></p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Calories</label>
+                        <input type="number" min="0" value={form.calories} onChange={e => setForm(f => ({ ...f, calories: e.target.value }))} style={inp} placeholder="e.g. 450"
+                          onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                          onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Protein (g)</label>
+                        <input type="number" min="0" value={form.protein_g} onChange={e => setForm(f => ({ ...f, protein_g: e.target.value }))} style={inp} placeholder="e.g. 28"
+                          onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                          onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              ) : tab === 'packaged' ? (
+                <form id="pkg-form" onSubmit={handlePkgSubmit} className="space-y-3">
+                  {/* Scan label — paywalled */}
+                  {isPremiumLocked ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-soft)', border: '1px solid var(--border-color)' }}>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Scan Nutrition Label</p>
+                        <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>AI reads any packaged label instantly</p>
+                      </div>
+                      <a href="/pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 9, background: '#3b82f6', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Unlock
+                      </a>
+                    </div>
+                  ) : (
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Scan Nutrition Label</label>
+                      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, borderRadius: 12, border: '1.5px dashed var(--border-color)', background: 'var(--bg-soft)', cursor: scanning ? 'default' : 'pointer', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600 }}>
+                        {scanning ? (
+                          <>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
+                            Scanning…
+                          </>
+                        ) : (
+                          <>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            Take photo or upload label
+                          </>
+                        )}
+                        <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={scanning}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) handleScan(f); }} />
+                      </label>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-placeholder)', fontSize: 11 }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border-color)' }} />
+                    or enter manually
+                    <div style={{ flex: 1, height: 1, background: 'var(--border-color)' }} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Product Name *</label>
+                    <input required value={pkgForm.name} onChange={e => setPkgForm(f => ({ ...f, name: e.target.value }))} style={inp} placeholder="e.g. Greek Yogurt"
+                      onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                      onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Brand</label>
+                      <input value={pkgForm.brand} onChange={e => setPkgForm(f => ({ ...f, brand: e.target.value }))} style={inp} placeholder="e.g. Chobani"
+                        onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                        onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Servings</label>
+                      <input type="number" min="0" step="0.5" value={pkgForm.servings} onChange={e => setPkgForm(f => ({ ...f, servings: e.target.value }))} style={inp} placeholder="1"
+                        onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                        onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Meal Category</label>
+                      <Select value={pkgForm.category || undefined} onValueChange={v => setPkgForm(f => ({ ...f, category: v }))}>
+                        <SelectTrigger size="lg" className="w-full"><SelectValue placeholder="e.g. Snack, Breakfast…" /></SelectTrigger>
+                        <SelectContent>
+                          {['breakfast','lunch','dinner','snack'].map(c => (
+                            <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-xs font-semibold uppercase tracking-wider pt-1" style={{ color: 'var(--text-tertiary)' }}>Nutrition Facts <span className="normal-case font-normal" style={{ color: 'var(--text-placeholder)' }}>(per serving)</span></p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      { label: 'Calories', key: 'calories', placeholder: '150' },
+                      { label: 'Protein (g)', key: 'protein_g', placeholder: '15' },
+                      { label: 'Total Carbs (g)', key: 'carbs_g', placeholder: '12' },
+                      { label: 'Total Fat (g)', key: 'fat_g', placeholder: '5' },
+                      { label: 'Sodium (mg)', key: 'sodium_mg', placeholder: '65' },
+                    ] as { label: string; key: keyof PkgForm; placeholder: string }[]).map(({ label, key, placeholder }) => (
+                      <div key={key} className={key === 'sodium_mg' ? 'col-span-2' : ''}>
+                        <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>{label}</label>
+                        <input type="number" min="0" value={pkgForm[key]} onChange={e => setPkgForm(f => ({ ...f, [key]: e.target.value }))} style={inp} placeholder={placeholder}
+                          onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                          onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
+                      </div>
+                    ))}
+                  </div>
                 </form>
               ) : tab === 'ai' ? (
-                <form id="ai-form" onSubmit={handleAiSubmit} className="space-y-3">
-                  <div className="rounded-xl p-4 text-sm" style={{ background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca' }}>Paste any recipe text — a social media caption, blog snippet, or notes.</div>
-                  <textarea required value={aiText} onChange={e => setAiText(e.target.value)} style={{ ...ta, minHeight: 180 }} placeholder="Paste recipe text here…"
-                    onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
-                    onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
-                </form>
+                isPremiumLocked ? (
+                  <div className="py-8 text-center">
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <h3 style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 8 }}>Premium Feature</h3>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>AI recipe extraction requires a paid plan.<br/>Upgrade to extract recipes from any text instantly.</p>
+                    <a href="/pricing" style={{ display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 20px', borderRadius: 10, background: '#3b82f6', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                      View Plans
+                    </a>
+                  </div>
+                ) : (
+                  <form id="ai-form" onSubmit={handleAiSubmit} className="space-y-3">
+                    <div className="rounded-xl p-4 text-sm" style={{ background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca' }}>Paste any recipe text — a social media caption, blog snippet, or notes.</div>
+                    <textarea required value={aiText} onChange={e => setAiText(e.target.value)} style={{ ...ta, minHeight: 180 }} placeholder="Paste recipe text here…"
+                      onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                      onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
+                  </form>
+                )
               ) : (
-                <form id="url-form" onSubmit={handleUrlSubmit} className="space-y-3">
-                  <div className="rounded-xl p-4 text-sm" style={{ background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca' }}>Paste an Instagram post URL with a recipe in the caption.</div>
-                  <input required type="url" value={aiUrl} onChange={e => setAiUrl(e.target.value)} placeholder="https://www.instagram.com/p/..." style={inp}
-                    onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
-                    onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
-                </form>
+                isPremiumLocked ? (
+                  <div className="py-8 text-center">
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <h3 style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 8 }}>Premium Feature</h3>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>Instagram URL extraction requires a paid plan.<br/>Upgrade to import any Instagram recipe in seconds.</p>
+                    <a href="/pricing" style={{ display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 20px', borderRadius: 10, background: '#3b82f6', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                      View Plans
+                    </a>
+                  </div>
+                ) : (
+                  <form id="url-form" onSubmit={handleUrlSubmit} className="space-y-3">
+                    <div className="rounded-xl p-4 text-sm" style={{ background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca' }}>Paste an Instagram post URL with a recipe in the caption.</div>
+                    <input required type="url" value={aiUrl} onChange={e => setAiUrl(e.target.value)} placeholder="https://www.instagram.com/p/..." style={inp}
+                      onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+                      onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
+                  </form>
+                )
               )}
             </div>
             <div className="px-6 py-4 flex gap-2" style={{ borderTop: '1px solid var(--border-soft)' }}>
               <button onClick={() => setShowAdd(false)} className="flex-1 text-sm font-medium" style={{ height: 40, borderRadius: 10, border: '1px solid var(--border-color)', color: 'var(--text-secondary)', background: 'var(--bg-card)' }}>Cancel</button>
-              <button type="submit" form={tab === 'manual' ? 'manual-form' : tab === 'ai' ? 'ai-form' : 'url-form'} disabled={saving} className="flex-1 text-sm font-semibold text-white disabled:opacity-40" style={{ height: 40, borderRadius: 10, background: tab === 'ai' ? '#3b82f6' : '#191c1f' }}>
-                {saving ? 'Extracting…' : tab === 'manual' ? 'Save recipe' : 'Extract recipe'}
-              </button>
+              {!(isPremiumLocked && (tab === 'ai' || tab === 'url')) && (
+                <button type="submit"
+                  form={tab === 'manual' ? 'manual-form' : tab === 'packaged' ? 'pkg-form' : tab === 'ai' ? 'ai-form' : 'url-form'}
+                  disabled={saving || scanning}
+                  className="flex-1 text-sm font-semibold text-white disabled:opacity-40"
+                  style={{ height: 40, borderRadius: 10, background: tab === 'ai' ? '#3b82f6' : '#191c1f' }}>
+                  {saving ? 'Saving…' : editingRecipe ? 'Save changes' : tab === 'manual' ? 'Save recipe' : tab === 'packaged' ? 'Save item' : 'Extract recipe'}
+                </button>
+              )}
             </div>
           </div>
         </div>

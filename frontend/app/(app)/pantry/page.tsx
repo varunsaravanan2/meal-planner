@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getInventory, addInventoryItem, deleteInventoryItem, isLoggedIn } from '@/lib/api';
 import type { InventoryItem } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CATEGORIES = ['dairy','protein','vegetables','fruits','grains','spices','condiments','snacks','beverages','other'];
 const LOCATIONS  = ['fridge','freezer','pantry','counter'];
@@ -105,10 +106,13 @@ export default function PantryPage() {
             style={{ ...inp, height: 38, fontSize: 13 }}
             onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
             onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'} />
-          <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ ...inp, width: 160 }}>
-            <option value="">All categories</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-          </select>
+          <Select value={filterCat || '__all__'} onValueChange={v => setFilterCat(v === '__all__' ? '' : v)}>
+            <SelectTrigger style={{ width: 160, height: 38 }}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All categories</SelectItem>
+              {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
 
         {loading ? (
@@ -206,22 +210,26 @@ export default function PantryPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Unit</label>
-                  <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} style={inp}>
-                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
+                  <Select value={form.unit} onValueChange={v => setForm(f => ({ ...f, unit: v }))}>
+                    <SelectTrigger style={{ height: 38 }}><SelectValue /></SelectTrigger>
+                    <SelectContent>{UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Category</label>
-                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={inp}>
-                    <option value="">—</option>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-                  </select>
+                  <Select value={form.category || undefined} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
+                    <SelectTrigger style={{ height: 38 }}><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Location</label>
-                  <select value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} style={inp}>
-                    {LOCATIONS.map(l => <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>)}
-                  </select>
+                  <Select value={form.location} onValueChange={v => setForm(f => ({ ...f, location: v }))}>
+                    <SelectTrigger style={{ height: 38 }}><SelectValue /></SelectTrigger>
+                    <SelectContent>{LOCATIONS.map(l => <SelectItem key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
               </div>
               <div>

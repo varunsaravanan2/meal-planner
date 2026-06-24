@@ -7,6 +7,7 @@ import {
   isLoggedIn,
   type WorkoutTemplate, type ExerciseEntry,
 } from '@/lib/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const TYPE_META: Record<string, { color: string; bg: string }> = {
   strength: { color: '#6366f1', bg: '#eef2ff' },
@@ -116,10 +117,12 @@ function AddWorkoutModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Type</label>
-              <select value={form.workout_type} onChange={e => setField('workout_type', e.target.value)} style={inp}>
-                <option value="">—</option>
-                {WORKOUT_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-              </select>
+              <Select value={form.workout_type || undefined} onValueChange={v => setField('workout_type', v)}>
+                <SelectTrigger style={{ height: 38 }}><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  {WORKOUT_TYPES.map(t => <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Duration (min)</label>

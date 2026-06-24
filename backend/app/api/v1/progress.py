@@ -66,6 +66,19 @@ def get_all_entries(
     return [_serialize_entry(e) for e in entries]
 
 
+@router.get("/{entry_id}/photos")
+def get_photos_for_entry(
+    entry_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    entry = get_progress_entry_by_id(db, entry_id, current_user.id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found.")
+    photos = get_all_photos_for_entry(db, entry.id, current_user.id)
+    return [_serialize_photo(p) for p in photos]
+
+
 @router.post("")
 def create_entry(
     body: ProgressEntryIn,

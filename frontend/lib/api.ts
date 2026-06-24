@@ -152,6 +152,10 @@ export async function extractRecipeFromUrl(instagram_url: string): Promise<Recip
   });
 }
 
+export async function updateRecipe(id: string, data: unknown): Promise<Recipe> {
+  return request<Recipe>(`/api/v1/recipes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
 export async function deleteRecipe(id: string): Promise<null> {
   return request<null>(`/api/v1/recipes/${id}`, { method: 'DELETE' });
 }

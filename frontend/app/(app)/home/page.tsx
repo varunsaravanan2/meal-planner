@@ -246,7 +246,10 @@ export default function HomePage() {
     if (typeof window === 'undefined') return {};
     try {
       const ids: string[] = JSON.parse(localStorage.getItem('meal_completions') || '[]');
-      return Object.fromEntries(ids.map(id => [id, true]));
+      const result = Object.fromEntries(ids.map(id => [id, true]));
+      const workoutMap: Record<string, boolean> = JSON.parse(localStorage.getItem('workout_completions') || '{}');
+      if (workoutMap[toIso(new Date())]) result['__workout__'] = true;
+      return result;
     } catch { return {}; }
   });
   const [selectedMeal, setSelectedMeal] = useState<MealPlanEntry | null>(null);
@@ -295,7 +298,15 @@ export default function HomePage() {
   }
   function toggleWorkout(e: React.MouseEvent) {
     e.stopPropagation();
-    setChecked(c => ({ ...c, __workout__: !c.__workout__ }));
+    setChecked(c => {
+      const next = { ...c, __workout__: !c.__workout__ };
+      try {
+        const workoutMap: Record<string, boolean> = JSON.parse(localStorage.getItem('workout_completions') || '{}');
+        workoutMap[today] = !!next.__workout__;
+        localStorage.setItem('workout_completions', JSON.stringify(workoutMap));
+      } catch {}
+      return next;
+    });
   }
 
   return (
