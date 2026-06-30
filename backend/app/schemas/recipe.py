@@ -66,6 +66,7 @@ class RecipeBase(BaseModel):
     nutrition: Optional[NutritionInfo] = None
     category: Optional[str] = Field(None, examples=["dinner", "dessert", "breakfast"])
     cuisine: Optional[str] = Field(None, examples=["Italian", "Mexican", "Japanese"])
+    is_favorite: bool = False
 
 
 class RecipeCreate(RecipeBase):
@@ -160,6 +161,7 @@ class RecipeUpdate(BaseModel):
     nutrition: Optional[NutritionInfo] = None
     category: Optional[str] = None
     cuisine: Optional[str] = None
+    is_favorite: Optional[bool] = None
 
 
 class RecipeResponse(RecipeBase):

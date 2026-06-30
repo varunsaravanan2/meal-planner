@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getProfile, saveProfile, generateMealPlan } from '@/lib/api';
+import { getProfile, saveProfile, generateMealPlan, generateNutritionalGoals, getSubscriptionStatus, type SubscriptionStatus } from '@/lib/api';
 import type { UserProfile } from '@/types';
 
 // ── Option sets ───────────────────────────────────────────────────────────────
@@ -29,6 +29,8 @@ type ProfileForm = {
   equipment: string[]; workout_types: string[]; injuries: string;
   diet_type: string; allergies: string[]; cuisine_preferences: string[]; disliked_foods: string;
   cooking_skill: string; max_cook_time: string; weekly_budget: string;
+  calorie_goal: string; protein_goal_g: string; carbs_goal_g: string; fat_goal_g: string;
+  water_goal: string;
 };
 
 const EMPTY: ProfileForm = {
@@ -37,6 +39,8 @@ const EMPTY: ProfileForm = {
   activity_level: '', fitness_level: '', workouts_per_week: '', equipment: [], workout_types: [], injuries: '',
   diet_type: '', allergies: [], cuisine_preferences: [], disliked_foods: '',
   cooking_skill: '', max_cook_time: '', weekly_budget: '',
+  calorie_goal: '', protein_goal_g: '', carbs_goal_g: '', fat_goal_g: '',
+  water_goal: '',
 };
 
 // ── Shared input style ────────────────────────────────────────────────────────
@@ -215,6 +219,15 @@ function ProfileSummary({ form, lastUpdated }: { form: ProfileForm; lastUpdated:
     ['Last saved',  updated],
   ];
 
+  const goalItems: [string, string][] = [
+    ['Calories',  form.calorie_goal   ? `${form.calorie_goal} kcal`    : '—'],
+    ['Protein',   form.protein_goal_g ? `${form.protein_goal_g}g`      : '—'],
+    ['Carbs',     form.carbs_goal_g   ? `${form.carbs_goal_g}g`        : '—'],
+    ['Fat',       form.fat_goal_g     ? `${form.fat_goal_g}g`          : '—'],
+    ['Water',     form.water_goal     ? `${form.water_goal} glasses`   : '—'],
+  ];
+  const hasGoals = goalItems.some(([, v]) => v !== '—');
+
   return (
     <div style={{
       background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-color)',
@@ -232,6 +245,20 @@ function ProfileSummary({ form, lastUpdated }: { form: ProfileForm; lastUpdated:
           </div>
         ))}
       </div>
+      {hasGoals && (
+        <>
+          <div style={{ height: 1, background: 'var(--border-soft)', margin: '14px 0 12px' }} />
+          <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: '0 0 10px' }}>Daily Targets</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px 0' }}>
+            {goalItems.map(([label, value]) => (
+              <div key={label}>
+                <p style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text-placeholder)', margin: '0 0 2px' }}>{label}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? 'var(--text-placeholder)' : 'var(--text-primary)', margin: 0 }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -245,16 +272,47 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingGoals, setGeneratingGoals] = useState(false);
   const [error, setError] = useState('');
+  const [goalsError, setGoalsError] = useState('');
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
 
   useEffect(() => {
     getProfile().then(p => {
       if (!p) return;
-      setForm(f => ({ ...f, ...(p as unknown as ProfileForm) }));
+      const raw = p as unknown as Record<string, unknown>;
+      const coerce = (v: unknown) => (v == null ? '' : String(v));
+      setForm(f => ({
+        ...f,
+        ...(p as unknown as ProfileForm),
+        calorie_goal:   coerce(raw.calorie_goal),
+        protein_goal_g: coerce(raw.protein_goal_g),
+        carbs_goal_g:   coerce(raw.carbs_goal_g),
+        fat_goal_g:     coerce(raw.fat_goal_g),
+        water_goal:     coerce(raw.water_goal),
+      }));
       const ua = (p as unknown as { updated_at?: string }).updated_at;
       if (ua) setLastUpdated(ua);
     }).catch(() => {});
+    getSubscriptionStatus().then(setSubStatus).catch(() => {});
   }, []);
+
+  const isPaid = subStatus !== null && subStatus.plan_type !== 'free';
+
+  async function handleGenerateGoals() {
+    setGeneratingGoals(true); setGoalsError('');
+    try {
+      const goals = await generateNutritionalGoals();
+      setForm(f => ({
+        ...f,
+        calorie_goal: goals.calorie_goal != null ? String(goals.calorie_goal) : f.calorie_goal,
+        protein_goal_g: goals.protein_goal_g != null ? String(goals.protein_goal_g) : f.protein_goal_g,
+        carbs_goal_g: goals.carbs_goal_g != null ? String(goals.carbs_goal_g) : f.carbs_goal_g,
+        fat_goal_g: goals.fat_goal_g != null ? String(goals.fat_goal_g) : f.fat_goal_g,
+      }));
+    } catch (e) { setGoalsError((e as Error).message); }
+    finally { setGeneratingGoals(false); }
+  }
 
   function set<K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) {
     setForm(f => ({ ...f, [k]: v }));
@@ -417,6 +475,59 @@ export default function ProfilePage() {
           <Field label="Weekly food budget" optional hint="per week">
             <TextInput numeric value={form.weekly_budget} onChange={v => set('weekly_budget', v)} placeholder="100" after="$" />
           </Field>
+        </div>
+
+        {/* ── Nutritional Goals ── */}
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+              <h2 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.09em', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'nowrap' }}>
+                Nutritional Goals
+              </h2>
+              <div style={{ flex: 1, height: 1, background: 'var(--border-soft)' }} />
+            </div>
+            {isPaid ? (
+              <button type="button" onClick={handleGenerateGoals} disabled={generatingGoals}
+                style={{ marginLeft: 12, flexShrink: 0, height: 30, padding: '0 12px', borderRadius: 8, border: 'none', background: '#3b82f6', color: '#fff', fontSize: 12, fontWeight: 700, cursor: generatingGoals ? 'not-allowed' : 'pointer', opacity: generatingGoals ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 5 }}>
+                {generatingGoals ? (
+                  <>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+                    Generating…
+                  </>
+                ) : 'Generate with AI'}
+              </button>
+            ) : (
+              <a href="/pricing" style={{ marginLeft: 12, flexShrink: 0, height: 30, padding: '0 12px', borderRadius: 8, background: 'var(--bg-soft)', color: 'var(--text-tertiary)', fontSize: 12, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5, border: '1px solid var(--border-color)' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                AI (paid)
+              </a>
+            )}
+          </div>
+          {goalsError && <p style={{ fontSize: 12, color: '#e23b4a', marginBottom: 10 }}>{goalsError}</p>}
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 14, lineHeight: 1.5 }}>
+            {isPaid ? 'Your goals are auto-filled from your profile — or enter custom values below.' : 'Set your daily targets manually, or upgrade to have AI calculate them from your profile.'}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {([
+              { label: 'Calories / day', key: 'calorie_goal' as keyof ProfileForm, placeholder: '2000', after: 'kcal' },
+              { label: 'Protein / day', key: 'protein_goal_g' as keyof ProfileForm, placeholder: '150', after: 'g' },
+              { label: 'Carbs / day', key: 'carbs_goal_g' as keyof ProfileForm, placeholder: '200', after: 'g' },
+              { label: 'Fat / day', key: 'fat_goal_g' as keyof ProfileForm, placeholder: '65', after: 'g' },
+              { label: 'Water / day', key: 'water_goal' as keyof ProfileForm, placeholder: '8', after: 'glasses' },
+            ]).map(({ label, key, placeholder, after }) => (
+              <div key={key}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{label}</label>
+                <div style={{ position: 'relative' }}>
+                  <input type="number" min="0" value={form[key] ?? ''} onChange={e => set(key, e.target.value)}
+                    placeholder={placeholder}
+                    style={{ ...BASE_INPUT, paddingRight: 36 }}
+                    onFocus={e => e.currentTarget.style.borderColor = '#3b82f6'}
+                    onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'} />
+                  <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-placeholder)', pointerEvents: 'none' }}>{after}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* ── Bottom CTA ── */}

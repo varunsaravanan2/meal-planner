@@ -8,7 +8,8 @@ import type {
   ShoppingList,
   GeneratePlanResult,
   ProgressEntry,
-  ProgressPhoto
+  ProgressPhoto,
+  FoodLogEntry,
 } from '@/types';
 
 const BASE = 'http://localhost:8000';
@@ -77,7 +78,7 @@ export async function getProfile(): Promise<UserProfile | null> {
   return request<UserProfile | null>('/api/v1/profile');
 }
 
-const INT_FIELDS    = ['age', 'height_ft', 'height_in', 'workouts_per_week'] as const;
+const INT_FIELDS    = ['age', 'height_ft', 'height_in', 'workouts_per_week', 'calorie_goal', 'protein_goal_g', 'carbs_goal_g', 'fat_goal_g', 'water_goal'] as const;
 const FLOAT_FIELDS  = ['weight_lbs', 'target_weight_lbs', 'weekly_budget'] as const;
 
 export async function saveProfile(data: Partial<UserProfile>): Promise<UserProfile> {
@@ -104,6 +105,17 @@ export async function saveProfile(data: Partial<UserProfile>): Promise<UserProfi
 
 export async function generateMealPlan(): Promise<GeneratePlanResult> {
   return request<GeneratePlanResult>('/api/v1/profile/generate-plan', { method: 'POST' });
+}
+
+export interface NutritionalGoals {
+  calorie_goal: number | null;
+  protein_goal_g: number | null;
+  carbs_goal_g: number | null;
+  fat_goal_g: number | null;
+}
+
+export async function generateNutritionalGoals(): Promise<NutritionalGoals> {
+  return request<NutritionalGoals>('/api/v1/profile/generate-goals', { method: 'POST' });
 }
 
 export async function getWeeklyWorkouts(startDate: string): Promise<{ workouts: Record<string, WorkoutPlan> }> {
@@ -154,6 +166,52 @@ export async function extractRecipeFromUrl(instagram_url: string): Promise<Recip
 
 export async function updateRecipe(id: string, data: unknown): Promise<Recipe> {
   return request<Recipe>(`/api/v1/recipes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function toggleFavorite(id: string): Promise<{ is_favorite: boolean }> {
+  return request<{ is_favorite: boolean }>(`/api/v1/recipes/${id}/favorite`, { method: 'POST' });
+}
+
+export async function swapMeal(id: string): Promise<MealPlanEntry> {
+  return request<MealPlanEntry>(`/api/v1/meal-plan/${id}/swap`, { method: 'POST' });
+}
+
+// ── Food Log ──────────────────────────────────────────────────────────────────
+
+export async function getFoodLog(date: string): Promise<FoodLogEntry[]> {
+  return request<FoodLogEntry[]>(`/api/v1/food-log?log_date=${date}`);
+}
+
+export async function addFoodLog(data: {
+  recipe_id?: string | null;
+  log_date: string;
+  meal_slot: string;
+  name: string;
+  calories?: number | null;
+  protein_g?: number | null;
+  carbs_g?: number | null;
+  fat_g?: number | null;
+  servings?: number;
+}): Promise<FoodLogEntry> {
+  return request<FoodLogEntry>('/api/v1/food-log', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function deleteFoodLog(id: string): Promise<null> {
+  return request<null>(`/api/v1/food-log/${id}`, { method: 'DELETE' });
+}
+
+export interface WeeklyFoodSummary {
+  week_start: string;
+  days_logged: number;
+  avg_calories: number;
+  avg_protein_g: number;
+  avg_carbs_g: number;
+  avg_fat_g: number;
+  daily: Record<string, { calories: number; protein_g: number; carbs_g: number; fat_g: number; entries: number }>;
+}
+
+export async function getWeeklyFoodSummary(weekOf: string): Promise<WeeklyFoodSummary> {
+  return request<WeeklyFoodSummary>(`/api/v1/food-log/weekly?week_of=${weekOf}`);
 }
 
 export async function deleteRecipe(id: string): Promise<null> {

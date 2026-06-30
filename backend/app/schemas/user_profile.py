@@ -24,6 +24,11 @@ class UserProfileBase(BaseModel):
     cooking_skill: Optional[str] = None
     max_cook_time: Optional[str] = None
     weekly_budget: Optional[float] = None
+    calorie_goal: Optional[int] = None
+    protein_goal_g: Optional[int] = None
+    carbs_goal_g: Optional[int] = None
+    fat_goal_g: Optional[int] = None
+    water_goal: Optional[int] = None
 
 class UserProfileCreate(UserProfileBase):
     pass

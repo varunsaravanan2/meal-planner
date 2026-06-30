@@ -4,9 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   getWeeklyPlan, addMealPlan, deleteMealPlan, getRecipes, isLoggedIn, getWeeklyWorkouts,
-  getSubscriptionStatus, listPlanSnapshots, restorePlanSnapshot,
-  saveWorkout, deleteWorkoutEntry, getWorkoutTemplates,
-  type SubscriptionStatus, type PlanSnapshot, type ExerciseEntry, type WorkoutTemplate,
+  getSubscriptionStatus, listPlanSnapshots, restorePlanSnapshot, getProfile,
+  saveWorkout, deleteWorkoutEntry, getWorkoutTemplates, swapMeal, getWeeklyFoodSummary, getFoodLog,
+  addFoodLog, deleteFoodLog,
+  type SubscriptionStatus, type PlanSnapshot, type ExerciseEntry, type WorkoutTemplate, type WeeklyFoodSummary,
 } from '@/lib/api';
 import type { MealPlanEntry, Recipe, WorkoutPlan, NutritionInfo } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -377,6 +378,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [workouts, setWorkouts] = useState<Record<string, WorkoutPlan>>({});
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+  const [calorieGoal, setCalorieGoal] = useState(2000);
+  const [proteinGoal, setProteinGoal] = useState(150);
 
   const [selectedMeal, setSelectedMeal] = useState<MealPlanEntry | null>(null);
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutPlan | null>(null);
@@ -384,6 +387,7 @@ export default function DashboardPage() {
   const [showRestore, setShowRestore] = useState(false);
   const [adding, setAdding] = useState<{ date: string; slot: string } | null>(null);
   const [selectedRecipeId, setSelectedRecipeId] = useState('');
+  const [addQuery, setAddQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [addError, setAddError] = useState('');
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => {
@@ -396,6 +400,9 @@ export default function DashboardPage() {
     try { return JSON.parse(localStorage.getItem('workout_completions') || '{}'); }
     catch { return {}; }
   });
+  const [weeklyFood, setWeeklyFood] = useState<WeeklyFoodSummary | null>(null);
+  const [todayFoodLog, setTodayFoodLog] = useState<{ calories: number; protein_g: number } | null>(null);
+  const [checkFoodLogIds, setCheckFoodLogIds] = useState<Record<string, string>>({});
 
   const weekDays = Array.from({ length: 7 }, (_, i) => toIso(addDays(monday, i)));
   const today = toIso(new Date());
@@ -416,11 +423,29 @@ export default function DashboardPage() {
   useEffect(() => { if (isLoggedIn()) getRecipes({ page_size: 100 }).then(d => setRecipes(d?.recipes || [])).catch(() => {}); }, []);
   useEffect(() => { fetchWorkouts(); }, [fetchWorkouts]);
   useEffect(() => { if (isLoggedIn()) getSubscriptionStatus().then(setSubStatus).catch(() => {}); }, []);
+  useEffect(() => {
+    if (isLoggedIn()) getProfile().then(p => {
+      if (!p) return;
+      const pr = p as unknown as Record<string, number>;
+      if (pr.calorie_goal) setCalorieGoal(pr.calorie_goal);
+      if (pr.protein_goal_g) setProteinGoal(pr.protein_goal_g);
+    }).catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!isLoggedIn()) return;
+    const weekStart = toIso(monday);
+    getWeeklyFoodSummary(weekStart).then(setWeeklyFood).catch(() => {});
+    getFoodLog(today).then(entries => {
+      const cal = Math.round(entries.reduce((s, e) => s + (e.calories ?? 0), 0));
+      const prot = Math.round(entries.reduce((s, e) => s + (e.protein_g ?? 0), 0));
+      setTodayFoodLog({ calories: cal, protein_g: prot });
+    }).catch(() => {});
+  }, [monday, today]);
 
   const todayEntries  = plan[today] || [];
   const completedTodayEntries = todayEntries.filter(e => completedIds.has(e.id));
-  const todayCal      = Math.round(completedTodayEntries.reduce((s, e) => s + (e.recipe?.nutrition?.calories ?? 0), 0));
-  const todayProt     = Math.round(completedTodayEntries.reduce((s, e) => s + (e.recipe?.nutrition?.protein_g ?? 0), 0));
+  const todayCal      = todayFoodLog?.calories ?? Math.round(completedTodayEntries.reduce((s, e) => s + (e.recipe?.nutrition?.calories ?? 0), 0));
+  const todayProt     = todayFoodLog?.protein_g ?? Math.round(completedTodayEntries.reduce((s, e) => s + (e.recipe?.nutrition?.protein_g ?? 0), 0));
   const todayMeals    = completedTodayEntries.length;
   const weekWorkouts  = weekDays.filter(d => workouts[d] && !workouts[d].is_rest_day).length;
   const totalMealsWeek = Object.values(plan).flat().length;
@@ -434,14 +459,39 @@ export default function DashboardPage() {
     finally { setSaving(false); }
   }
 
-  function toggleComplete(id: string, e: React.MouseEvent) {
+  async function toggleComplete(id: string, e: React.MouseEvent) {
     e.stopPropagation();
+    const isNowDone = !completedIds.has(id);
     setCompletedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       try { localStorage.setItem('meal_completions', JSON.stringify([...next])); } catch {}
       return next;
     });
+    if (isNowDone) {
+      const entry = Object.values(plan).flat().find(en => en.id === id);
+      if (entry?.recipe) {
+        try {
+          const logged = await addFoodLog({
+            recipe_id: entry.recipe.id,
+            log_date: entry.planned_date,
+            meal_slot: entry.meal_slot,
+            name: entry.recipe.title,
+            calories: entry.recipe.nutrition?.calories ?? null,
+            protein_g: entry.recipe.nutrition?.protein_g ?? null,
+            carbs_g: entry.recipe.nutrition?.carbs_g ?? null,
+            fat_g: entry.recipe.nutrition?.fat_g ?? null,
+            servings: 1,
+          });
+          setCheckFoodLogIds(prev => ({ ...prev, [id]: logged.id }));
+        } catch { /* silent */ }
+      }
+    } else if (checkFoodLogIds[id]) {
+      try {
+        await deleteFoodLog(checkFoodLogIds[id]);
+        setCheckFoodLogIds(prev => { const n = { ...prev }; delete n[id]; return n; });
+      } catch { /* silent */ }
+    }
   }
 
   function toggleWorkoutCompletion(date: string, e: React.MouseEvent) {
@@ -458,15 +508,30 @@ export default function DashboardPage() {
     try { await deleteMealPlan(id); } catch { fetchPlan(); }
   }
 
+  const [swapping, setSwapping] = useState<Set<string>>(new Set());
+  async function handleSwapMeal(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    if (swapping.has(id)) return;
+    setSwapping(s => new Set(s).add(id));
+    try {
+      const updated = await swapMeal(id);
+      setPlan(prev => { const next: Record<string, MealPlanEntry[]> = {}; for (const [d, es] of Object.entries(prev)) next[d] = es.map(en => en.id === id ? updated : en); return next; });
+    } catch { fetchPlan(); }
+    finally { setSwapping(s => { const n = new Set(s); n.delete(id); return n; }); }
+  }
+
   return (
     <>
       <style>{`
         @keyframes dashFadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
         @keyframes modalIn    { from { opacity:0; transform:scale(0.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        @keyframes slideUp    { from { transform:translateY(100%); } to { transform:translateY(0); } }
         .add-row { opacity: 0; transition: opacity 0.15s; }
         .slot-cell:hover .add-row { opacity: 1; }
         .del-btn { pointer-events: none; }
+        .swap-btn { pointer-events: none; }
         .meal-entry:hover .del-btn { opacity: 1 !important; pointer-events: auto; }
+        .meal-entry:hover .swap-btn { opacity: 1 !important; pointer-events: auto; }
       `}</style>
 
       <div style={{ minHeight: '100%', padding: '28px 28px 60px' }}>
@@ -511,15 +576,42 @@ export default function DashboardPage() {
 
         {/* ── Stat cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 28 }}>
-          <StatCard label="Today's Calories" value={todayCal}    max={2000} color={BLUE}    unit=" cal" delay={0}
+          <StatCard label="Today's Calories" value={todayCal}    max={calorieGoal} color={BLUE}    unit=" cal" delay={0}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>} />
-          <StatCard label="Today's Protein"  value={todayProt}   max={150}  color="#a78bfa" unit="g"    delay={60}
+          <StatCard label="Today's Protein"  value={todayProt}   max={proteinGoal}  color="#a78bfa" unit="g"    delay={60}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>} />
           <StatCard label="Meals Today"      value={todayMeals}  max={4}    color="#34d399" unit=""     delay={120}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>} />
           <StatCard label="Active Days"      value={weekWorkouts} max={7}   color="#fb923c" unit=""     delay={180}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>} />
         </div>
+
+        {/* ── Weekly nutrition summary ── */}
+        {weeklyFood && (
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '16px 22px', marginBottom: 20, animation: 'dashFadeUp 0.55s ease 220ms both' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>This Week&apos;s Nutrition</p>
+              <span style={{ fontSize: 12, color: MUTED }}>{weeklyFood.days_logged}/7 days logged</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+              {[
+                { label: 'Avg Calories', value: weeklyFood.avg_calories, unit: ' cal', color: BLUE },
+                { label: 'Avg Protein', value: weeklyFood.avg_protein_g, unit: 'g', color: '#a78bfa' },
+                { label: 'Avg Carbs', value: weeklyFood.avg_carbs_g, unit: 'g', color: '#34d399' },
+                { label: 'Avg Fat', value: weeklyFood.avg_fat_g, unit: 'g', color: '#fb923c' },
+              ].map(({ label, value, unit, color }) => (
+                <div key={label} style={{ background: 'var(--bg-soft)', borderRadius: 10, padding: '10px 14px' }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{label}</p>
+                  <p style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{value > 0 ? Math.round(value) : '—'}{value > 0 ? unit : ''}</p>
+                  <p style={{ fontSize: 10, color: DIM, marginTop: 3 }}>per logged day</p>
+                </div>
+              ))}
+            </div>
+            {weeklyFood.days_logged === 0 && (
+              <p style={{ fontSize: 13, color: MUTED, marginTop: 10 }}>Log meals on your home page to see weekly averages here.</p>
+            )}
+          </div>
+        )}
 
         {/* ── Week nav header ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -662,12 +754,20 @@ export default function DashboardPage() {
                                   style={{ position: 'absolute', top: -4, left: -4, width: 14, height: 14, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-soft)', border: `1px solid ${BORDER}`, cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s' }}>
                                   <svg width="6" height="6" viewBox="0 0 12 12" fill="none" stroke={MUTED} strokeWidth="2.5" strokeLinecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
                                 </button>
+                                <button onClick={e => handleSwapMeal(e, entry.id)}
+                                  className="swap-btn"
+                                  title="Swap for another recipe"
+                                  style={{ position: 'absolute', top: -4, right: -4, width: 14, height: 14, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: swapping.has(entry.id) ? 'rgba(59,130,246,0.12)' : 'var(--bg-soft)', border: `1px solid ${BORDER}`, cursor: swapping.has(entry.id) ? 'default' : 'pointer', opacity: 0, transition: 'opacity 0.15s' }}>
+                                  <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: swapping.has(entry.id) ? 'spin 0.7s linear infinite' : 'none' }}>
+                                    <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                                  </svg>
+                                </button>
                               </div>
                             );
                           })}
                         </div>
                         {!slotFull && (
-                          <button className="add-row" onClick={() => { setAdding({ date: day, slot }); setSelectedRecipeId(''); setAddError(''); }}
+                          <button className="add-row" onClick={() => { setAdding({ date: day, slot }); setSelectedRecipeId(''); setAddQuery(''); setAddError(''); }}
                             style={{ marginTop: entries.length > 0 ? 4 : 0, width: '100%', textAlign: 'left', fontSize: 11, color: MUTED, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <span style={{ fontSize: 13 }}>+</span> Add {slot}
                           </button>
@@ -800,57 +900,117 @@ export default function DashboardPage() {
         )}
 
         {/* ── Add meal modal ── */}
-        {adding && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)' }} onClick={() => setAdding(null)}>
-            <div style={{ background: CARD, borderRadius: 20, width: '100%', maxWidth: 360, border: `1px solid ${BORDER}`, animation: 'modalIn 0.25s ease', padding: 22 }} onClick={e => e.stopPropagation()}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <div>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '3px 10px', borderRadius: 20, color: BLUE, background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)' }}>{SLOT_META[adding.slot]?.label}</span>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginTop: 8 }}>
-                    {new Date(adding.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                  </p>
+        {adding && (() => {
+          const q = addQuery.toLowerCase();
+          const slotFirst = recipes.filter(r => r.category?.toLowerCase() === adding.slot);
+          const others = recipes.filter(r => r.category?.toLowerCase() !== adding.slot);
+          const sorted = [...slotFirst, ...others];
+          const filtered = q ? sorted.filter(r => r.title.toLowerCase().includes(q) || r.category?.toLowerCase().includes(q) || r.cuisine?.toLowerCase().includes(q)) : sorted;
+          return (
+            <div className="fixed inset-0 flex items-end justify-center z-50" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }} onClick={() => setAdding(null)}>
+              <div style={{ background: CARD, borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', border: `1px solid ${BORDER}`, borderBottom: 'none', animation: 'slideUp 0.25s ease' }} onClick={e => e.stopPropagation()}>
+                {/* Handle */}
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: BORDER, margin: '12px auto 0' }} />
+                {/* Header */}
+                <div style={{ padding: '14px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '3px 10px', borderRadius: 20, color: BLUE, background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)' }}>{SLOT_META[adding.slot]?.label}</span>
+                    <p style={{ fontSize: 13, color: MUTED, marginTop: 5 }}>
+                      {new Date(adding.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    </p>
+                  </div>
+                  <button onClick={() => setAdding(null)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${BORDER}`, background: 'var(--bg-soft)', color: MUTED, fontSize: 14, cursor: 'pointer', flexShrink: 0 }}>✕</button>
                 </div>
-                <button onClick={() => setAdding(null)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${BORDER}`, background: 'var(--bg-soft)', color: MUTED, fontSize: 14, cursor: 'pointer' }}>✕</button>
-              </div>
-              {addError && <p style={{ fontSize: 12, color: '#f87171', marginBottom: 10 }}>{addError}</p>}
-              {(() => {
-                const slotMatches = recipes.filter(r => r.category?.toLowerCase() === adding.slot);
-                return (
-                  <div style={{ marginBottom: 16 }}>
-                    {slotMatches.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '14px 0' }}>
-                        <p style={{ fontSize: 13, color: MUTED, marginBottom: 4 }}>No {SLOT_META[adding.slot]?.label.toLowerCase()} recipes yet.</p>
-                        <p style={{ fontSize: 12, color: DIM }}>Go to Recipes and set a recipe's category to &quot;{adding.slot}&quot;.</p>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <p style={{ fontSize: 11, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                            {SLOT_META[adding.slot]?.label} recipes
-                          </p>
-                          <p style={{ fontSize: 11, color: DIM }}>{slotMatches.length} available</p>
-                        </div>
-                        <Select value={selectedRecipeId || undefined} onValueChange={setSelectedRecipeId}>
-                          <SelectTrigger size="lg" className="w-full"><SelectValue placeholder="Choose a recipe…" /></SelectTrigger>
-                          <SelectContent>
-                            {slotMatches.map(r => <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </>
+                {/* Search */}
+                <div style={{ padding: '0 20px 12px', flexShrink: 0 }}>
+                  <div style={{ position: 'relative' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input
+                      autoFocus
+                      value={addQuery}
+                      onChange={e => setAddQuery(e.target.value)}
+                      placeholder="Search recipes…"
+                      style={{ width: '100%', height: 40, paddingLeft: 34, paddingRight: 14, borderRadius: 10, border: `1px solid ${BORDER}`, background: 'var(--bg-soft)', color: TEXT, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    {addQuery && (
+                      <button onClick={() => setAddQuery('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: MUTED, fontSize: 14, lineHeight: 1 }}>✕</button>
                     )}
                   </div>
-                );
-              })()}
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setAdding(null)} style={{ flex: 1, height: 44, borderRadius: 10, border: `1px solid ${BORDER}`, color: MUTED, background: 'transparent', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                <button onClick={handleAdd} disabled={!selectedRecipeId || saving}
-                  style={{ flex: 1, height: 44, borderRadius: 10, background: BLUE, color: '#fff', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', opacity: (!selectedRecipeId || saving) ? 0.4 : 1 }}>
-                  {saving ? 'Adding…' : 'Add meal'}
-                </button>
+                </div>
+                {addError && <p style={{ fontSize: 12, color: '#f87171', padding: '0 20px 8px', flexShrink: 0 }}>{addError}</p>}
+                {/* Recipe list */}
+                <div style={{ overflowY: 'auto', flex: 1, padding: '0 20px 24px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {filtered.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '32px 0', color: MUTED }}>
+                      <p style={{ fontSize: 14, fontWeight: 600 }}>No recipes found</p>
+                      <p style={{ fontSize: 12, color: DIM, marginTop: 4 }}>Try a different search, or add recipes in the Recipes tab.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {!q && slotFirst.length > 0 && (
+                        <p style={{ fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 2 }}>
+                          {SLOT_META[adding.slot]?.label} recipes
+                        </p>
+                      )}
+                      {filtered.map((r, idx) => {
+                        const isSlotMatch = r.category?.toLowerCase() === adding.slot;
+                        const isSelected = selectedRecipeId === r.id;
+                        const showDivider = !q && idx === slotFirst.length && others.length > 0 && slotFirst.length > 0;
+                        const cal = r.nutrition?.calories != null ? Math.round(r.nutrition.calories / 10) * 10 : null;
+                        return (
+                          <React.Fragment key={r.id}>
+                            {showDivider && (
+                              <p style={{ fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.09em', marginTop: 8, marginBottom: 2 }}>All recipes</p>
+                            )}
+                            <button
+                              onClick={() => { setSelectedRecipeId(r.id); setAddError(''); }}
+                              style={{
+                                width: '100%', textAlign: 'left', background: isSelected ? 'rgba(59,130,246,0.08)' : 'var(--bg-soft)',
+                                border: isSelected ? `1.5px solid ${BLUE}` : `1px solid ${BORDER}`,
+                                borderRadius: 12, padding: '10px 14px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+                                  {isSlotMatch && (
+                                    <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: BLUE, background: 'rgba(59,130,246,0.1)', padding: '1px 6px', borderRadius: 4 }}>
+                                      {r.category}
+                                    </span>
+                                  )}
+                                  {r.cuisine && <span style={{ fontSize: 11, color: DIM }}>{r.cuisine}</span>}
+                                  {cal != null && <span style={{ fontSize: 11, color: DIM }}>{cal} cal</span>}
+                                  {(r.prep_time || r.cook_time) && <span style={{ fontSize: 11, color: DIM }}>{(r.prep_time ?? 0) + (r.cook_time ?? 0)} min</span>}
+                                </div>
+                              </div>
+                              {isSelected && (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                  <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                              )}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+                {/* Footer */}
+                <div style={{ padding: '12px 20px 28px', borderTop: `1px solid ${BORDER}`, flexShrink: 0, display: 'flex', gap: 10 }}>
+                  <button onClick={() => setAdding(null)} style={{ flex: 1, height: 44, borderRadius: 10, border: `1px solid ${BORDER}`, color: MUTED, background: 'transparent', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={handleAdd} disabled={!selectedRecipeId || saving}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: BLUE, color: '#fff', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', opacity: (!selectedRecipeId || saving) ? 0.4 : 1 }}>
+                    {saving ? 'Adding…' : 'Add to plan'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </>
   );

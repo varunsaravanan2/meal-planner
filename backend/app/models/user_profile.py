@@ -34,5 +34,11 @@ class UserProfile(Base):
     max_cook_time = Column(String)
     weekly_budget = Column(Float, nullable=True)
 
+    calorie_goal = Column(Integer, nullable=True)
+    protein_goal_g = Column(Integer, nullable=True)
+    carbs_goal_g = Column(Integer, nullable=True)
+    fat_goal_g = Column(Integer, nullable=True)
+    water_goal = Column(Integer, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

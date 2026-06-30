@@ -14,7 +14,7 @@ from app.crud.meal_plan import (
     delete_meal_plan,
     get_week_range,
 )
-from app.crud.recipe import get_recipe_by_id
+from app.crud.recipe import get_recipe_by_id, get_user_recipes
 from app.api.v1.auth import get_current_user_dependency
 from app.models.user import User
 
@@ -128,6 +128,30 @@ def update_meal_plan_endpoint(
     if not entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meal plan entry not found")
     return entry
+
+
+@router.post("/{plan_id}/swap", response_model=MealPlanResponse, summary="Swap meal for another recipe")
+def swap_meal_endpoint(
+    plan_id: UUID,
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db),
+):
+    import random
+    entry = get_meal_plan_by_id(db, plan_id, current_user.id)
+    if not entry:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meal plan entry not found")
+
+    slot = entry.meal_slot
+    # Prefer recipes matching the same category as the slot
+    candidates = [r for r in get_user_recipes(db, current_user.id, limit=200, category=slot) if r.id != entry.recipe_id]
+    if not candidates:
+        candidates = [r for r in get_user_recipes(db, current_user.id, limit=200) if r.id != entry.recipe_id]
+    if not candidates:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No other recipes available to swap to")
+
+    new_recipe = random.choice(candidates)
+    updated = update_meal_plan(db, plan_id, current_user.id, {"recipe_id": new_recipe.id})
+    return updated
 
 
 @router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Remove a meal plan entry")

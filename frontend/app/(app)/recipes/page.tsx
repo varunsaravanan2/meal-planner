@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getRecipes, searchRecipes, createRecipe, updateRecipe, extractRecipeFromText, extractRecipeFromUrl, deleteRecipe, isLoggedIn, getSubscriptionStatus, type SubscriptionStatus } from '@/lib/api';
+import { getRecipes, searchRecipes, createRecipe, updateRecipe, extractRecipeFromText, extractRecipeFromUrl, deleteRecipe, isLoggedIn, getSubscriptionStatus, toggleFavorite, type SubscriptionStatus } from '@/lib/api';
 import type { Recipe, NutritionInfo } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -86,6 +86,7 @@ export default function RecipesPage() {
   const [modalTop, setModalTop] = useState<number>(0);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+  const [favOnly, setFavOnly] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isLoggedIn()) { router.push('/login'); return; }
@@ -106,6 +107,13 @@ export default function RecipesPage() {
     const q = e.target.value; setQuery(q);
     if (!q.trim()) { loadRecipes(); return; }
     try { setRecipes((await searchRecipes(q)) || []); } catch {}
+  }
+
+  async function handleToggleFavorite(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    setRecipes(rs => rs.map(r => r.id === id ? { ...r, is_favorite: !r.is_favorite } : r));
+    if (selected?.id === id) setSelected(s => s ? { ...s, is_favorite: !s.is_favorite } : s);
+    try { await toggleFavorite(id); } catch { loadRecipes(); }
   }
 
   function parseIngredients(raw: string) {
@@ -202,7 +210,8 @@ export default function RecipesPage() {
       const data = await res.json();
       setPkgForm(f => ({
         ...f,
-        name: data.name || f.name,
+        name:       data.name      || f.name,
+        brand:      data.brand     || f.brand,
         calories:   data.calories   != null ? String(data.calories)   : f.calories,
         protein_g:  data.protein_g  != null ? String(data.protein_g)  : f.protein_g,
         carbs_g:    data.carbs_g    != null ? String(data.carbs_g)    : f.carbs_g,
@@ -251,16 +260,25 @@ export default function RecipesPage() {
         </button>
       </div>
 
-      <div className="relative mb-5">
-        <svg className="absolute left-4 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8d969e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input value={query} onChange={handleSearch} placeholder="Search recipes…"
-          className="w-full text-sm focus:outline-none"
-          style={{ height: 42, paddingLeft: 38, paddingRight: 12, border: '1.5px solid var(--border-color)', borderRadius: 12, color: 'var(--text-primary)', background: 'var(--bg-input)', fontSize: 13 }}
-          onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
-          onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'}
-        />
+      <div className="flex gap-3 mb-5 items-center">
+        <div className="relative flex-1">
+          <svg className="absolute left-4 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8d969e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input value={query} onChange={handleSearch} placeholder="Search recipes…"
+            className="w-full text-sm focus:outline-none"
+            style={{ height: 42, paddingLeft: 38, paddingRight: 12, border: '1.5px solid var(--border-color)', borderRadius: 12, color: 'var(--text-primary)', background: 'var(--bg-input)', fontSize: 13 }}
+            onFocus={e => e.currentTarget.style.borderColor = '#191c1f'}
+            onBlur={e => e.currentTarget.style.borderColor = '#e2e2e7'}
+          />
+        </div>
+        <button onClick={() => setFavOnly(f => !f)} title="Show favorites"
+          style={{ flexShrink: 0, height: 42, padding: '0 14px', borderRadius: 12, border: `1.5px solid ${favOnly ? '#f59e0b' : 'var(--border-color)'}`, background: favOnly ? '#fffbeb' : 'var(--bg-input)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: favOnly ? '#d97706' : 'var(--text-tertiary)', transition: 'all 0.15s' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill={favOnly ? '#f59e0b' : 'none'} stroke={favOnly ? '#f59e0b' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          Favorites
+        </button>
       </div>
 
       {loading ? (
@@ -287,7 +305,7 @@ export default function RecipesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-          {recipes.map(r => {
+          {(favOnly ? recipes.filter(r => r.is_favorite) : recipes).map(r => {
             const { color, bg } = CATEGORY_COLORS[r.category || ''] || DEFAULT_COLORS;
             return (
               <div key={r.id} className="group relative rounded-2xl overflow-hidden transition-all cursor-pointer"
@@ -300,6 +318,17 @@ export default function RecipesPage() {
                 <div style={{ height: 72, background: `linear-gradient(135deg, ${color}22 0%, ${color}0a 100%)`, borderBottom: `1px solid ${color}18`, padding: '12px 18px', display: 'flex', alignItems: 'flex-end' }}>
                   <CategoryBadge category={r.category} />
                 </div>
+
+                {/* Star favorite button */}
+                <button
+                  onClick={e => handleToggleFavorite(e, r.id)}
+                  className={`transition-opacity absolute top-3 left-3 flex items-center justify-center cursor-pointer ${r.is_favorite ? '' : 'opacity-0 group-hover:opacity-100'}`}
+                  style={{ width: 28, height: 28, borderRadius: 10, background: r.is_favorite ? '#fffbeb' : 'rgba(255,255,255,0.85)', border: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }}
+                  title={r.is_favorite ? 'Remove from favorites' : 'Add to favorites'}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill={r.is_favorite ? '#f59e0b' : 'none'} stroke={r.is_favorite ? '#f59e0b' : '#8d969e'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
 
                 {/* Hover trash button */}
                 <button
@@ -362,7 +391,16 @@ export default function RecipesPage() {
                   {selected.servings && <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{selected.servings} servings</span>}
                 </div>
               </div>
-              <button onClick={() => { setSelected(null); setConfirmDelete(false); }} className="text-lg ml-4 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer" style={{ color: 'var(--text-tertiary)', background: 'var(--bg-soft)', border: 'none' }}>✕</button>
+              <div className="flex items-center gap-2 ml-4 shrink-0">
+                <button onClick={e => handleToggleFavorite(e, selected.id)}
+                  style={{ width: 32, height: 32, borderRadius: 10, border: `1.5px solid ${selected.is_favorite ? '#f59e0b' : 'var(--border-color)'}`, background: selected.is_favorite ? '#fffbeb' : 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  title={selected.is_favorite ? 'Remove from favorites' : 'Add to favorites'}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill={selected.is_favorite ? '#f59e0b' : 'none'} stroke={selected.is_favorite ? '#f59e0b' : 'var(--text-tertiary)'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
+                <button onClick={() => { setSelected(null); setConfirmDelete(false); }} className="text-lg w-8 h-8 flex items-center justify-center rounded-full cursor-pointer" style={{ color: 'var(--text-tertiary)', background: 'var(--bg-soft)', border: 'none' }}>✕</button>
+              </div>
             </div>
             <div className="overflow-y-auto px-6 py-5 space-y-5">
               {selected.nutrition?.calories != null && <NutritionLabel n={selected.nutrition} />}

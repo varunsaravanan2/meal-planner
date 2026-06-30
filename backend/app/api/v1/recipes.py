@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
@@ -312,6 +312,54 @@ async def extract_recipe_from_text_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to extract recipe: {str(e)}"
         )
+
+
+@router.post("/scan-label", summary="Scan packaged food label via AI vision")
+async def scan_label_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db),
+):
+    from app.crud.subscription import get_or_create_free
+    from app.services.meal_plan_generator import client as ai_client
+    import base64
+    import json
+
+    sub = get_or_create_free(db, current_user.id)
+    if sub.plan_type == "free":
+        raise HTTPException(status_code=402, detail="Label scanning requires a paid plan.")
+
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Image too large (max 10 MB).")
+
+    mime = file.content_type or "image/jpeg"
+    b64 = base64.standard_b64encode(contents).decode()
+
+    prompt = """Look at this packaged food label and extract the nutrition information.
+Return ONLY valid JSON with these exact keys (use null if not visible):
+{"name": "Product Name", "brand": "Brand Name", "calories": 200, "protein_g": 10, "carbs_g": 25, "fat_g": 8, "sodium_mg": 400}
+All numeric values should be per serving. No extra text."""
+
+    try:
+        response = ai_client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": mime, "data": b64}},
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        )
+        raw = response.content[0].text.strip()
+        start, end = raw.index("{"), raw.rindex("}") + 1
+        data = json.loads(raw[start:end])
+    except Exception:
+        raise HTTPException(status_code=500, detail="Could not read the label — try entering values manually.")
+
+    return data
 
 
 @router.get(
@@ -638,6 +686,21 @@ def delete_recipe_endpoint(
     
     # 204 No Content returns no body
     return None
+
+
+@router.post("/{recipe_id}/favorite", summary="Toggle recipe favorite")
+def toggle_favorite_endpoint(
+    recipe_id: UUID,
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db),
+):
+    recipe = get_recipe_by_id(db, recipe_id, current_user.id)
+    if not recipe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
+    recipe.is_favorite = not bool(recipe.is_favorite)
+    db.commit()
+    db.refresh(recipe)
+    return {"is_favorite": recipe.is_favorite}
 
 
 @router.get(

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, JSON, ForeignKey, Text
+from sqlalchemy import Column, String, Integer, DateTime, JSON, ForeignKey, Text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -92,6 +92,8 @@ class Recipe(Base):
     category = Column(String, nullable=True)  # e.g., "dinner", "dessert", "breakfast"
     cuisine = Column(String, nullable=True)    # e.g., "Italian", "Mexican", "Japanese"
     
+    is_favorite = Column(Boolean, default=False, nullable=False, server_default='false')
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

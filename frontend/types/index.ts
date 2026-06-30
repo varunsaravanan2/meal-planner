@@ -32,8 +32,23 @@ export interface Recipe {
   cuisine: string | null;
   source_url: string | null;
   image_url: string | null;
+  is_favorite: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface FoodLogEntry {
+  id: string;
+  recipe_id: string | null;
+  log_date: string;
+  meal_slot: string;
+  name: string;
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  servings: number;
+  created_at: string;
 }
 
 export interface MealPlanEntry {

@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import engine, Base
-from app.models import user, recipe, inventory, meal_plan, user_profile, workout_plan, subscription, plan_snapshot, workout_template, progress
-from app.api.v1 import auth, recipes, inventory as inventory_router, meal_plan as meal_plan_router, shopping_list as shopping_list_router, user_profile as user_profile_router, workout_plan as workout_router, billing as billing_router, plan_snapshots as snapshots_router, workout_templates as workout_templates_router, progress as progress_router
+from app.models import user, recipe, inventory, meal_plan, user_profile, workout_plan, subscription, plan_snapshot, workout_template, progress, food_log
+from app.api.v1 import auth, recipes, inventory as inventory_router, meal_plan as meal_plan_router, shopping_list as shopping_list_router, user_profile as user_profile_router, workout_plan as workout_router, billing as billing_router, plan_snapshots as snapshots_router, workout_templates as workout_templates_router, progress as progress_router, food_log as food_log_router
 
 
 app = FastAPI(
@@ -96,6 +96,12 @@ app.include_router(
     workout_templates_router.router,
     prefix="/api/v1/workout-templates",
     tags=["Workout Templates"]
+)
+
+app.include_router(
+    food_log_router.router,
+    prefix="/api/v1/food-log",
+    tags=["Food Log"]
 )
 
 
