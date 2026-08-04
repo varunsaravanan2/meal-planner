@@ -13,6 +13,7 @@ class FoodLogCreate(BaseModel):
     protein_g: Optional[float] = None
     carbs_g: Optional[float] = None
     fat_g: Optional[float] = None
+    fiber_g: Optional[float] = None
     servings: float = 1.0
 
 
@@ -26,6 +27,7 @@ class FoodLogOut(BaseModel):
     protein_g: Optional[float] = None
     carbs_g: Optional[float] = None
     fat_g: Optional[float] = None
+    fiber_g: Optional[float] = None
     servings: float
     created_at: datetime
 

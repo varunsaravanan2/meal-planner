@@ -118,3 +118,12 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+# instagram thumbnail that leads to JCBME.coach, at the bottom
+# weekly view should be in dashboard - done
+# widget on dashboard with all workout plans - done
+# cheat meal highlight in weekly plan - done
+# workout types(chest, back, legs, etc) - done
+# strength workout plan in paid plans, 30 minute consultation (1 week)
+# 30 days of workouts and meals, 30 minute constultation per week (1 month)
+# Schedule with Josh for 1 hour meeting, bring up Josh's calendar and enable them to choose one slot (one time purchase, $100)

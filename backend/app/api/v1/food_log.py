@@ -28,11 +28,12 @@ def get_weekly_summary(
     for e in entries:
         key = str(e.log_date)
         if key not in daily:
-            daily[key] = {"calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0, "entries": 0}
+            daily[key] = {"calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0, "fiber_g": 0.0, "entries": 0}
         daily[key]["calories"] += e.calories or 0
         daily[key]["protein_g"] += e.protein_g or 0
         daily[key]["carbs_g"] += e.carbs_g or 0
         daily[key]["fat_g"] += e.fat_g or 0
+        daily[key]["fiber_g"] += e.fiber_g or 0
         daily[key]["entries"] += 1
 
     days_logged = len(daily)
@@ -40,6 +41,7 @@ def get_weekly_summary(
     avg_prot = round(sum(d["protein_g"] for d in daily.values()) / days_logged, 1) if days_logged else 0
     avg_carbs = round(sum(d["carbs_g"] for d in daily.values()) / days_logged, 1) if days_logged else 0
     avg_fat = round(sum(d["fat_g"] for d in daily.values()) / days_logged, 1) if days_logged else 0
+    avg_fiber = round(sum(d["fiber_g"] for d in daily.values()) / days_logged, 1) if days_logged else 0
 
     return {
         "week_start": str(monday),
@@ -48,6 +50,7 @@ def get_weekly_summary(
         "avg_protein_g": avg_prot,
         "avg_carbs_g": avg_carbs,
         "avg_fat_g": avg_fat,
+        "avg_fiber_g": avg_fiber,
         "daily": {k: {**v, "calories": round(v["calories"]), "protein_g": round(v["protein_g"], 1)} for k, v in daily.items()},
     }
 

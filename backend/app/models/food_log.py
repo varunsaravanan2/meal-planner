@@ -21,6 +21,7 @@ class FoodLog(Base):
     protein_g = Column(Float, nullable=True)
     carbs_g = Column(Float, nullable=True)
     fat_g = Column(Float, nullable=True)
+    fiber_g = Column(Float, nullable=True)
     servings = Column(Float, default=1.0)
 
     created_at = Column(DateTime, default=datetime.utcnow)
