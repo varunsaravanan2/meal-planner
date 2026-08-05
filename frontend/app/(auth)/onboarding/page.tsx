@@ -209,7 +209,7 @@ export default function OnboardingPage() {
 
   async function handleSkip() {
     try { await saveProfile({}); } catch {}
-    router.push('/dashboard');
+    router.push('/home');
   }
 
   async function handleContinue() {
@@ -227,7 +227,7 @@ export default function OnboardingPage() {
     setGenerating(true);
     try { await generateMealPlan(); }
     catch {}
-    router.push('/dashboard');
+    router.push('/home');
   }
 
   const progress = ((step + 1) / STEPS.length) * 100;
@@ -280,7 +280,7 @@ export default function OnboardingPage() {
         <div className="h-full transition-all duration-300" style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #494fdf, #7c7fef)' }} />
       </div>
 
-      <div className="flex-1 flex flex-col px-8 py-10 max-w-lg w-full mx-auto">
+      <div className="flex-1 flex flex-col px-5 sm:px-8 py-10 max-w-lg w-full mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-black mb-2" style={{ color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.2 }}>{STEPS[step].title}</h1>
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{STEPS[step].sub}</p>

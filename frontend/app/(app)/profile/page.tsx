@@ -237,7 +237,7 @@ function ProfileSummary({ form, lastUpdated }: { form: ProfileForm; lastUpdated:
         fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
         color: 'var(--text-tertiary)', margin: '0 0 14px',
       }}>Current Profile</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px 0' }}>
+      <div className="profile-summary-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px 0' }}>
         {items.map(([label, value]) => (
           <div key={label}>
             <p style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text-placeholder)', margin: '0 0 2px' }}>{label}</p>
@@ -249,7 +249,7 @@ function ProfileSummary({ form, lastUpdated }: { form: ProfileForm; lastUpdated:
         <>
           <div style={{ height: 1, background: 'var(--border-soft)', margin: '14px 0 12px' }} />
           <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: '0 0 10px' }}>Daily Targets</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px 0' }}>
+          <div className="profile-summary-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px 0' }}>
             {goalItems.map(([label, value]) => (
               <div key={label}>
                 <p style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text-placeholder)', margin: '0 0 2px' }}>{label}</p>
@@ -337,7 +337,7 @@ export default function ProfilePage() {
       setLastUpdated(new Date().toISOString());
       setGenerating(true);
       const result = await generateMealPlan();
-      router.push(`/dashboard?generated=${result.meals_created}`);
+      router.push(`/home?generated=${result.meals_created}`);
     } catch (err) { setError((err as Error).message || 'Generation failed'); }
     finally { setSaving(false); setGenerating(false); }
   }
@@ -350,6 +350,13 @@ export default function ProfilePage() {
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '28px 20px 48px' }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .profile-summary-grid-3 { grid-template-columns: repeat(2,1fr) !important; }
+          .profile-summary-grid-5 { grid-template-columns: repeat(2,1fr) !important; }
+          .form-2col { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
       {/* Header */}
       <div style={{ marginBottom: 22 }}>
@@ -377,7 +384,7 @@ export default function ProfilePage() {
         {/* ── Personal ── */}
         <div style={card}>
           <SectionTitle>Personal</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+          <div className="form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
             <Field label="Age" hint="years">
               <TextInput numeric value={form.age} onChange={v => set('age', v)} placeholder="25" />
             </Field>
@@ -391,7 +398,7 @@ export default function ProfilePage() {
               onFtChange={v => set('height_ft', v)} onInChange={v => set('height_in', v)}
             />
           </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+          <div className="form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
             <Field label="Weight" hint="lbs · 80–400">
               <TextInput numeric value={form.weight_lbs} onChange={v => set('weight_lbs', v)} placeholder="170" after="lbs" />
             </Field>

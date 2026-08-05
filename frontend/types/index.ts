@@ -47,6 +47,7 @@ export interface FoodLogEntry {
   protein_g: number | null;
   carbs_g: number | null;
   fat_g: number | null;
+  fiber_g: number | null;
   servings: number;
   created_at: string;
 }

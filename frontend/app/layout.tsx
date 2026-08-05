@@ -1,18 +1,18 @@
 import type { Metadata } from 'next';
-import { Lora, Raleway } from 'next/font/google';
+import { Inter, Nunito } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
-const lora = Lora({
+const inter = Inter({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-lora',
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-inter',
 });
 
-const raleway = Raleway({
+const nunito = Nunito({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-raleway',
+  weight: ['700', '800', '900'],
+  variable: '--font-nunito',
 });
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${lora.variable} ${raleway.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${nunito.variable} h-full`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('theme');document.documentElement.dataset.theme=(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches))?'dark':'light'}catch(e){}` }} />
       </head>

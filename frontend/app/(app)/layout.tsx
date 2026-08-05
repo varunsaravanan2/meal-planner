@@ -6,7 +6,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProfileGate>
       <NavLinks />
-      <main style={{ paddingTop: 80 }}>
+      <main className="pt-4 pb-[calc(env(safe-area-inset-bottom)+88px)] sm:pt-20 sm:pb-0">
         <PageTransition>
           {children}
         </PageTransition>

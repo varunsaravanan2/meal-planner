@@ -8,7 +8,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
     <div
       key={pathname}
       style={{
-        animation: 'pageTransitionIn 0.32s cubic-bezier(0.4, 0, 0.2, 1) both',
+        animation: 'pageTransitionIn 0.28s ease both',
         minHeight: '100%',
       }}
     >

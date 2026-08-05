@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  getWeeklyPlan, getWeeklyWorkouts, isLoggedIn, getProfile,
+  getWeeklyPlan, getWeeklyWorkouts, isLoggedIn,
   getFoodLog, addFoodLog, deleteFoodLog, getRecipes,
 } from '@/lib/api';
 import type { MealPlanEntry, WorkoutPlan, FoodLogEntry, Recipe } from '@/types';
+import WeeklyPlanSection from '@/components/WeeklyPlanSection';
 
 const BLUE = '#3b82f6';
 const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
@@ -21,20 +22,6 @@ function isoWeekMonday(d: Date): Date {
   const date = new Date(d); const day = date.getDay();
   date.setDate(date.getDate() - day + (day === 0 ? -6 : 1)); return date;
 }
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
-
-function calcStreak(days: string[], today: string): number {
-  const set = new Set(days);
-  let streak = 0;
-  const d = new Date();
-  if (!set.has(today)) d.setDate(d.getDate() - 1);
-  while (set.has(toIso(d))) { streak++; d.setDate(d.getDate() - 1); }
-  return streak;
-}
-
 // ── Recipe detail modal ────────────────────────────────────────────────────────
 
 function RecipeModal({ entry, onClose }: { entry: MealPlanEntry; onClose: () => void }) {
@@ -142,106 +129,6 @@ function RecipeModal({ entry, onClose }: { entry: MealPlanEntry; onClose: () => 
   );
 }
 
-// ── Circular progress ring ─────────────────────────────────────────────────────
-
-function Ring({ pct, color, size = 54 }: { pct: number; color: string; size?: number }) {
-  const stroke = 4.5;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - Math.min(pct, 1));
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)', display: 'block' }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--bg-soft)" strokeWidth={stroke} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-        style={{ transition: 'stroke-dashoffset 1.1s cubic-bezier(0.4,0,0.2,1)' }} />
-    </svg>
-  );
-}
-
-// ── Task card ──────────────────────────────────────────────────────────────────
-
-function MealTaskCard({
-  entry, slotLabel, done,
-  onToggle, onViewDetail,
-}: {
-  entry: MealPlanEntry; slotLabel: string; done: boolean;
-  onToggle: (e: React.MouseEvent) => void;
-  onViewDetail: () => void;
-}) {
-  const cal = entry.recipe?.nutrition?.calories;
-  const prot = entry.recipe?.nutrition?.protein_g;
-
-  return (
-    <div
-      onClick={onViewDetail}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
-        background: done ? 'rgba(34,197,94,0.03)' : 'var(--bg-card)',
-        border: '1px solid var(--border-color)',
-        borderLeft: done ? '3px solid #22c55e' : '3px solid rgba(59,130,246,0.45)',
-        borderRadius: 12, padding: '12px 16px',
-        opacity: done ? 0.7 : 1,
-        transition: 'all 0.2s ease',
-      }}
-    >
-      {/* Checkbox — separate click target */}
-      <button
-        onClick={onToggle}
-        style={{
-          flexShrink: 0, width: 26, height: 26, borderRadius: '50%',
-          border: done ? 'none' : '2px solid var(--border-color)',
-          background: done ? '#22c55e' : 'transparent',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', transition: 'all 0.2s ease',
-        }}
-      >
-        {done && (
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="1.5,6 4.5,9.5 10.5,2.5" />
-          </svg>
-        )}
-      </button>
-
-      {/* Slot label */}
-      <div style={{ flexShrink: 0, width: 54 }}>
-        <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: done ? '#22c55e' : BLUE }}>
-          {slotLabel}
-        </p>
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', textDecoration: done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {entry.recipe?.title ?? 'Untitled'}
-        </p>
-        {entry.recipe?.description && (
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {entry.recipe.description}
-          </p>
-        )}
-      </div>
-
-      {/* Nutrition — only shown once completed */}
-      {done && cal != null && (
-        <div style={{ flexShrink: 0, textAlign: 'right' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)' }}>
-            {Math.round(cal / 10) * 10} cal
-          </p>
-          {prot != null && (
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{Math.round(prot)}g protein</p>
-          )}
-        </div>
-      )}
-
-      {/* Chevron hint */}
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-placeholder)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-        <polyline points="9 18 15 12 9 6" />
-      </svg>
-    </div>
-  );
-}
-
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -272,24 +159,8 @@ export default function HomePage() {
   const [addModal, setAddModal] = useState<string | null>(null); // slot name
   const [addTab, setAddTab] = useState<'search' | 'manual'>('search');
   const [addQuery, setAddQuery] = useState('');
-  const [addForm, setAddForm] = useState({ name: '', calories: '', protein_g: '', carbs_g: '', fat_g: '' });
+  const [addForm, setAddForm] = useState({ name: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', fiber_g: '' });
   const [addingFood, setAddingFood] = useState(false);
-  const [calorieGoal, setCalorieGoal] = useState(2000);
-  const [proteinGoal, setProteinGoal] = useState(150);
-  const [carbsGoal, setCarbsGoal] = useState(250);
-  const [fatGoal, setFatGoal] = useState(65);
-  const [waterGoal, setWaterGoal] = useState(8);
-  const [water, setWater] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    try { const logs: Record<string, number> = JSON.parse(localStorage.getItem('water_logs') || '{}'); return logs[toIso(new Date())] ?? 0; } catch { return 0; }
-  });
-  const [streak, setStreak] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    try {
-      const days: string[] = JSON.parse(localStorage.getItem('completed_days') || '[]');
-      return calcStreak(days, toIso(new Date()));
-    } catch { return 0; }
-  });
 
   useEffect(() => {
     if (!isLoggedIn()) { router.push('/login'); return; }
@@ -301,66 +172,19 @@ export default function HomePage() {
     ])
       .then(([planData, workoutData, logData]) => {
         setPlan(planData?.days || {});
-        setWorkout(workoutData?.workouts?.[today] ?? null);
+        const allWorkouts = workoutData?.workouts || {};
+        setWorkout(allWorkouts[today] ?? null);
         setFoodLog(logData || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
     getRecipes({ page_size: 100 }).then(d => setAllRecipes(d?.recipes || [])).catch(() => {});
-    getProfile().then(p => {
-      if (!p) return;
-      const pr = p as unknown as Record<string, number>;
-      if (pr.calorie_goal) setCalorieGoal(pr.calorie_goal);
-      if (pr.protein_goal_g) setProteinGoal(pr.protein_goal_g);
-      if (pr.carbs_goal_g) setCarbsGoal(pr.carbs_goal_g);
-      if (pr.fat_goal_g) setFatGoal(pr.fat_goal_g);
-      if (pr.water_goal) setWaterGoal(pr.water_goal);
-    }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const todayEntries = plan[today] || [];
-  const todayCal = Math.round(foodLog.reduce((s, e) => s + (e.calories ?? 0), 0));
-  const todayProt = Math.round(foodLog.reduce((s, e) => s + (e.protein_g ?? 0), 0));
-  const todayCarbs = Math.round(foodLog.reduce((s, e) => s + (e.carbs_g ?? 0), 0));
-  const todayFat = Math.round(foodLog.reduce((s, e) => s + (e.fat_g ?? 0), 0));
-
-  const loggedRecipeIds = new Set(foodLog.map(e => e.recipe_id).filter(Boolean));
   const workoutIsActive = workout && !workout.is_rest_day;
-  const mealsDone = todayEntries.filter(e => loggedRecipeIds.has(e.recipe?.id ?? '')).length;
   const workoutDone = !!checked['__workout__'];
-  const totalTasks = todayEntries.length + (workoutIsActive ? 1 : 0);
-  const completedCount = mealsDone + (workoutDone ? 1 : 0);
-  const progress = totalTasks > 0 ? completedCount / totalTasks : 0;
-  const allDone = totalTasks > 0 && completedCount === totalTasks;
-
-  const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-
-  // Save streak when all tasks are done for the day
-  React.useEffect(() => {
-    if (!allDone || typeof window === 'undefined') return;
-    try {
-      const days: string[] = JSON.parse(localStorage.getItem('completed_days') || '[]');
-      if (!days.includes(today)) {
-        days.push(today);
-        localStorage.setItem('completed_days', JSON.stringify(days));
-        setStreak(calcStreak(days, today));
-      }
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allDone]);
-
-  function updateWater(delta: number) {
-    setWater(w => {
-      const next = Math.max(0, Math.min(w + delta, waterGoal * 2));
-      try {
-        const logs: Record<string, number> = JSON.parse(localStorage.getItem('water_logs') || '{}');
-        logs[today] = next;
-        localStorage.setItem('water_logs', JSON.stringify(logs));
-      } catch {}
-      return next;
-    });
-  }
 
   async function handleLogMeal(entry: MealPlanEntry, servings: number) {
     setLogging(true);
@@ -375,6 +199,7 @@ export default function HomePage() {
         protein_g: r?.nutrition?.protein_g != null ? Math.round(r.nutrition.protein_g * servings * 10) / 10 : null,
         carbs_g: r?.nutrition?.carbs_g != null ? Math.round(r.nutrition.carbs_g * servings * 10) / 10 : null,
         fat_g: r?.nutrition?.fat_g != null ? Math.round(r.nutrition.fat_g * servings * 10) / 10 : null,
+        fiber_g: r?.nutrition?.fiber_g != null ? Math.round(r.nutrition.fiber_g * servings * 10) / 10 : null,
         servings,
       });
       setFoodLog(prev => [...prev, logged]);
@@ -396,6 +221,7 @@ export default function HomePage() {
         protein_g: recipe.nutrition?.protein_g ?? null,
         carbs_g: recipe.nutrition?.carbs_g ?? null,
         fat_g: recipe.nutrition?.fat_g ?? null,
+        fiber_g: recipe.nutrition?.fiber_g ?? null,
         servings: 1,
       });
       setFoodLog(prev => [...prev, logged]);
@@ -416,10 +242,11 @@ export default function HomePage() {
         protein_g: addForm.protein_g ? parseFloat(addForm.protein_g) : null,
         carbs_g: addForm.carbs_g ? parseFloat(addForm.carbs_g) : null,
         fat_g: addForm.fat_g ? parseFloat(addForm.fat_g) : null,
+        fiber_g: addForm.fiber_g ? parseFloat(addForm.fiber_g) : null,
         servings: 1,
       });
       setFoodLog(prev => [...prev, logged]);
-      setAddModal(null); setAddForm({ name: '', calories: '', protein_g: '', carbs_g: '', fat_g: '' });
+      setAddModal(null); setAddForm({ name: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', fiber_g: '' });
     } catch { /* silent */ }
     finally { setAddingFood(false); }
   }
@@ -454,184 +281,27 @@ export default function HomePage() {
   }
 
   return (
-    <div style={{ minHeight: '100%', padding: '28px 28px 60px' }}>
+    <div style={{ minHeight: '100%' }}>
       <style>{`
-        @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes modalIn { from { opacity:0; transform:scale(0.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
-        .meal-task:hover { box-shadow: 0 4px 16px rgba(59,130,246,0.1); }
-        .qlink:hover { background: var(--bg-soft) !important; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(8px); animation-timing-function:cubic-bezier(0.23,1,0.32,1); } to { opacity:1; transform:translateY(0); } }
+        @keyframes modalIn { from { opacity:0; transform:scale(0.95) translateY(8px); animation-timing-function:cubic-bezier(0.23,1,0.32,1); } to { opacity:1; transform:scale(1) translateY(0); } }
+        @media (hover: hover) and (pointer: fine) {
+          .meal-task:hover { box-shadow: 0 4px 16px rgba(59,130,246,0.1); }
+          .qlink:hover { background: var(--bg-soft) !important; }
+        }
       `}</style>
 
-      {/* ── Header ── */}
-      <div style={{ marginBottom: 24, animation: 'fadeUp 0.4s ease' }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>
-          {greeting()}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <h1 style={{ fontSize: 30, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.6px', lineHeight: 1.1 }}>
-            {dateLabel}
-          </h1>
-          {streak > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 26, padding: '0 10px', borderRadius: 99, background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.25)', fontSize: 12, fontWeight: 700, color: '#f97316', flexShrink: 0 }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="#f97316" stroke="none"><path d="M12 2C9.5 6 8 9 10 13c-2-1-3-3-3-5C4.5 11 3 14 3 17a9 9 0 0 0 18 0c0-5-4-9-9-15zm0 20a7 7 0 0 1-5-11.9C8 12 10 14 12 14s4-2 5-3.9A7 7 0 0 1 12 22z"/></svg>
-              {streak}
-            </span>
-          )}
-        </div>
-
-        {/* Progress bar */}
-        {!loading && totalTasks > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--bg-soft)', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%', width: `${progress * 100}%`,
-                background: allDone ? '#22c55e' : BLUE,
-                borderRadius: 3, transition: 'width 0.5s ease',
-              }} />
-            </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: allDone ? '#22c55e' : 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-              {allDone ? '✓ All done!' : `${completedCount} / ${totalTasks} done`}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* ── Stats row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
-        {[
-          {
-            label: 'Calories', displayVal: loading ? '—' : `${todayCal}`, sub: `of ${calorieGoal.toLocaleString()} cal`,
-            pct: todayCal / calorieGoal, color: BLUE,
-            icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>,
-          },
-          {
-            label: 'Protein', displayVal: loading ? '—' : `${todayProt}g`, sub: `of ${proteinGoal}g`,
-            pct: todayProt / proteinGoal, color: '#a78bfa',
-            icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
-          },
-          {
-            label: 'Carbs', displayVal: loading ? '—' : `${todayCarbs}g`, sub: `of ${carbsGoal}g`,
-            pct: todayCarbs / carbsGoal, color: '#34d399',
-            icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
-          },
-          {
-            label: 'Fat', displayVal: loading ? '—' : `${todayFat}g`, sub: `of ${fatGoal}g`,
-            pct: todayFat / fatGoal, color: '#fb923c',
-            icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
-          },
-        ].map(({ label, displayVal, sub, pct, color, icon }, i) => (
-          <div key={label} style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16,
-            padding: '16px 16px 13px', animation: `fadeUp 0.4s ease ${i * 55}ms both`,
-            display: 'flex', flexDirection: 'column',
-          }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 12 }}>{label}</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 13 }}>
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <Ring pct={pct} color={color} size={52} />
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div>
-              </div>
-              <div>
-                <p style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.6px', lineHeight: 1 }}>{displayVal}</p>
-                <p style={{ fontSize: 11, color: 'var(--text-placeholder)', marginTop: 4 }}>{sub}</p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--bg-soft)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.min(pct * 100, 100)}%`, background: color, borderRadius: 2, transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)' }} />
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-placeholder)', flexShrink: 0, minWidth: 30, textAlign: 'right' }}>{Math.round(pct * 100)}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Macro donut ── */}
-      {!loading && (todayProt > 0 || todayCarbs > 0 || todayFat > 0) && (() => {
-        const protCal = todayProt * 4;
-        const carbCal = todayCarbs * 4;
-        const fatCal = todayFat * 9;
-        const total = protCal + carbCal + fatCal;
-        const size = 84; const stroke = 9;
-        const r = (size - stroke) / 2;
-        const circ = 2 * Math.PI * r;
-        const pPct = total > 0 ? protCal / total : 0;
-        const cPct = total > 0 ? carbCal / total : 0;
-        const fPct = total > 0 ? fatCal / total : 0;
-        const pDash = circ * pPct; const cDash = circ * cPct; const fDash = circ * fPct;
-        const cOffset = pDash; const fOffset = pDash + cDash;
-        const cx = size / 2; const cy = size / 2;
-        return (
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 20, animation: 'fadeUp 0.4s ease 240ms both' }}>
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)', display: 'block' }}>
-                <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bg-soft)" strokeWidth={stroke} />
-                {pPct > 0 && <circle cx={cx} cy={cy} r={r} fill="none" stroke="#a78bfa" strokeWidth={stroke} strokeDasharray={`${pDash} ${circ - pDash}`} strokeLinecap="butt" style={{ transition: 'stroke-dasharray 1s ease' }} />}
-                {cPct > 0 && <circle cx={cx} cy={cy} r={r} fill="none" stroke="#34d399" strokeWidth={stroke} strokeDasharray={`${cDash} ${circ - cDash}`} strokeDashoffset={-cOffset} strokeLinecap="butt" style={{ transition: 'stroke-dasharray 1s ease' }} />}
-                {fPct > 0 && <circle cx={cx} cy={cy} r={r} fill="none" stroke="#fb923c" strokeWidth={stroke} strokeDasharray={`${fDash} ${circ - fDash}`} strokeDashoffset={-fOffset} strokeLinecap="butt" style={{ transition: 'stroke-dasharray 1s ease' }} />}
-              </svg>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{todayCal}</p>
-                <p style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 1 }}>cal</p>
-              </div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Macro Breakdown</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[
-                  { label: 'Protein', pct: pPct, color: '#a78bfa', g: todayProt },
-                  { label: 'Carbs', pct: cPct, color: '#34d399', g: todayCarbs },
-                  { label: 'Fat', pct: fPct, color: '#fb923c', g: todayFat },
-                ].map(({ label, pct: p, color, g }) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{label}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', minWidth: 36, textAlign: 'right' }}>{g}g</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 32, textAlign: 'right' }}>{Math.round(p * 100)}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-
-
-      {/* ── Water tracker ── */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '14px 18px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 16, animation: 'fadeUp 0.4s ease 220ms both' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C6.5 8 4 13 4 17a8 8 0 0 0 16 0c0-4-2.5-9-8-15z"/></svg>
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>Water</p>
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 1 }}>{water} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>/ {waterGoal} glasses</span></p>
-          </div>
-        </div>
-        {/* Glasses dots */}
-        <div style={{ display: 'flex', gap: 5, flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {Array.from({ length: waterGoal }).map((_, i) => (
-            <button key={i} onClick={() => updateWater(i < water ? -(water - i) : i + 1 - water)}
-              style={{ width: 18, height: 22, borderRadius: 4, border: 'none', background: i < water ? '#38bdf8' : 'var(--bg-soft)', cursor: 'pointer', transition: 'background 0.15s', padding: 0 }} />
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <button onClick={() => updateWater(-1)} disabled={water === 0}
-            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: 16, fontWeight: 700, cursor: water === 0 ? 'not-allowed' : 'pointer', opacity: water === 0 ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-          <button onClick={() => updateWater(1)} disabled={water >= waterGoal * 2}
-            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-color)', background: '#38bdf8', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-        </div>
-      </div>
+      {/* ── Weekly plan section wraps tasks between stats and calendar ── */}
+      <WeeklyPlanSection>
 
       {/* ── Tasks ── */}
-      <div>
+      <div style={{ marginBottom: 20 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
               Today&apos;s Tasks
             </h2>
-            <a href="/dashboard" style={{ fontSize: 12, fontWeight: 600, color: BLUE, textDecoration: 'none' }}>
-              View full plan →
-            </a>
+            <span />
           </div>
 
           {loading ? (
@@ -652,7 +322,7 @@ export default function HomePage() {
                 return (
                   <div key={slot}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>{SLOT_LABELS[slot]}</p>
+                      <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>{SLOT_LABELS[slot]}</p>
                       {slotLog.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e' }}>{slotLog.length} logged</span>}
                     </div>
 
@@ -695,7 +365,7 @@ export default function HomePage() {
 
                       {/* + Log food button — always for snack, only when nothing planned or logged for other slots */}
                       {(slot === 'snack' || (planned.length === 0 && slotLog.length === 0)) && (
-                        <button onClick={() => { setAddModal(slot); setAddTab('search'); setAddQuery(''); setAddForm({ name: '', calories: '', protein_g: '', carbs_g: '', fat_g: '' }); }}
+                        <button onClick={() => { setAddModal(slot); setAddTab('search'); setAddQuery(''); setAddForm({ name: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', fiber_g: '' }); }}
                           style={{ width: '100%', textAlign: 'left', padding: '8px 14px', border: '1px dashed var(--border-color)', borderRadius: 10, background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                           Log food to {SLOT_LABELS[slot]}
@@ -710,10 +380,10 @@ export default function HomePage() {
               {/* Workout */}
               {workoutIsActive && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-card)', border: workoutDone ? '1px solid rgba(34,197,94,0.35)' : '1px solid var(--border-color)', borderRadius: 16, padding: '13px 16px', opacity: workoutDone ? 0.65 : 1 }}>
-                  <button onClick={toggleWorkout} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', border: workoutDone ? 'none' : '2px solid var(--border-color)', background: workoutDone ? '#22c55e' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}>
+                  <button onClick={toggleWorkout} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', border: workoutDone ? 'none' : '2px solid var(--border-color)', background: workoutDone ? '#22c55e' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 160ms ease-out, border-color 160ms ease-out' }}>
                     {workoutDone && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,6 4.5,9.5 10.5,2.5" /></svg>}
                   </button>
-                  <div style={{ width: 54, flexShrink: 0 }}><p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: workoutDone ? '#22c55e' : '#fb923c' }}>Workout</p></div>
+                  <div style={{ width: 54, flexShrink: 0 }}><p style={{ fontSize: 11, fontWeight: 500, color: workoutDone ? '#22c55e' : 'var(--text-tertiary)' }}>Workout</p></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{workout!.title ?? 'Workout'}</p>
                     {workout!.workout_type && <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{workout!.workout_type}{workout!.duration_minutes ? ` · ${workout!.duration_minutes} min` : ''}</p>}
@@ -723,15 +393,15 @@ export default function HomePage() {
               {workout?.is_rest_day && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-soft)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '13px 16px' }}>
                   <div style={{ width: 26, height: 26, borderRadius: '50%', border: '2px dashed var(--border-color)', flexShrink: 0 }} />
-                  <div style={{ width: 54, flexShrink: 0 }}><p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-placeholder)' }}>Workout</p></div>
+                  <div style={{ width: 54, flexShrink: 0 }}><p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-placeholder)' }}>Workout</p></div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>Rest day — enjoy the recovery</p>
                 </div>
               )}
               {workout === null && (
-                <a href="/dashboard" style={{ textDecoration: 'none' }}>
+                <a href="/workouts" style={{ textDecoration: 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-soft)', border: '1px dashed var(--border-color)', borderRadius: 16, padding: '13px 16px', cursor: 'pointer' }}>
                     <div style={{ width: 26, height: 26, borderRadius: '50%', border: '2px dashed var(--border-color)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 15, color: 'var(--text-placeholder)', lineHeight: 1 }}>+</span></div>
-                    <div style={{ width: 54, flexShrink: 0 }}><p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-placeholder)' }}>Workout</p></div>
+                    <div style={{ width: 54, flexShrink: 0 }}><p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-placeholder)' }}>Workout</p></div>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>Log today&apos;s workout</p>
                   </div>
                 </a>
@@ -740,6 +410,8 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      </WeeklyPlanSection>
 
       {/* ── Recipe detail modal ── */}
       {selectedMeal && (
@@ -864,6 +536,7 @@ export default function HomePage() {
                     { key: 'protein_g', label: 'Protein (g)', placeholder: '0', type: 'number' },
                     { key: 'carbs_g', label: 'Carbs (g)', placeholder: '0', type: 'number' },
                     { key: 'fat_g', label: 'Fat (g)', placeholder: '0', type: 'number' },
+                    { key: 'fiber_g', label: 'Fiber (g)', placeholder: '0', type: 'number' },
                   ].map(({ key, label, placeholder, type }) => (
                     <div key={key}>
                       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>{label}</p>

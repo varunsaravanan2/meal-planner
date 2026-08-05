@@ -191,6 +191,7 @@ export async function addFoodLog(data: {
   protein_g?: number | null;
   carbs_g?: number | null;
   fat_g?: number | null;
+  fiber_g?: number | null;
   servings?: number;
 }): Promise<FoodLogEntry> {
   return request<FoodLogEntry>('/api/v1/food-log', { method: 'POST', body: JSON.stringify(data) });
@@ -207,7 +208,8 @@ export interface WeeklyFoodSummary {
   avg_protein_g: number;
   avg_carbs_g: number;
   avg_fat_g: number;
-  daily: Record<string, { calories: number; protein_g: number; carbs_g: number; fat_g: number; entries: number }>;
+  avg_fiber_g: number;
+  daily: Record<string, { calories: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number; entries: number }>;
 }
 
 export async function getWeeklyFoodSummary(weekOf: string): Promise<WeeklyFoodSummary> {
@@ -399,3 +401,6 @@ export async function deleteProgressPhoto(photoId: string): Promise<{ deleted: b
   return request<{ deleted: boolean }>(`/api/v1/progress/photos/${photoId}`, { method: 'DELETE' });
 }
 
+export async function getProgressPhotos(entryId: string): Promise<ProgressPhoto[]> {
+  return request<ProgressPhoto[]>(`/api/v1/progress/${entryId}/photos`);
+}

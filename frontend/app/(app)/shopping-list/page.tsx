@@ -68,7 +68,7 @@ export default function ShoppingListPage() {
   return (
     <div className="min-h-full" style={{ background: 'transparent' }}>
       <div className="max-w-5xl mx-auto px-5 py-5">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>Shopping List</h1>
             <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>{weekLabel}</p>
@@ -87,7 +87,7 @@ export default function ShoppingListPage() {
         {error && <div className="mb-4 px-4 py-3 rounded-xl" style={{ color: '#e23b4a', background: '#fff1f2', border: '1px solid #fecdd3', fontSize: 13 }}>{error}</div>}
 
         {loading ? (
-          <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 300px' }}>
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_300px]">
             <div className="space-y-2">
               <div className="mb-4 rounded-xl p-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
                 <div className="skeleton" style={{ height: 14, width: '40%', marginBottom: 12 }} />
@@ -118,7 +118,7 @@ export default function ShoppingListPage() {
             <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Add meals on the Weekly Plan page to generate a shopping list.</p>
           </div>
         ) : (
-          <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 300px' }}>
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_300px]">
             <div>
               {toBuy.length > 0 && (
                 <div className="mb-4 rounded-xl p-4" style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>

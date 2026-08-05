@@ -7,13 +7,13 @@ import { LayoutDashboard, Calendar, BookOpen, Dumbbell, ShoppingBag, Package, Cr
 
 const tubelightItems = [
   { name: 'Dashboard', url: '/home',         icon: LayoutDashboard },
+  { name: 'Progress',  url: '/progress',     icon: TrendingUp  },
   { name: 'Plan',      url: '/dashboard',    icon: Calendar    },
   { name: 'Recipes',  url: '/recipes',       icon: BookOpen    },
   { name: 'Workouts', url: '/workouts',      icon: Dumbbell    },
   { name: 'Shopping', url: '/shopping-list', icon: ShoppingBag },
   { name: 'Pantry',   url: '/pantry',        icon: Package     },
   { name: 'Plans',    url: '/pricing',       icon: CreditCard  },
-  { name: 'Progress', url: '/progress',      icon: TrendingUp  },
   { name: 'Profile',  url: '/profile',       icon: User        },
 ];
 
