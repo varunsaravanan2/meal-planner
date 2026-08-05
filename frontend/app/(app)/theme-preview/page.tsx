@@ -70,8 +70,8 @@ const MealCard = ({
         {tags.map(t => (
           <span key={t} style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}>{t}</span>
         ))}
-        <span style={{ fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 20, background: 'rgba(125,212,192,0.22)', color: C.mint, border: `1px solid rgba(125,212,192,0.35)` }}>⚡ {cal}</span>
-        <span style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.14)', color: '#fff' }}>⏱ {time}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 20, background: 'rgba(125,212,192,0.22)', color: C.mint, border: `1px solid rgba(125,212,192,0.35)` }}>{cal}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.14)', color: '#fff' }}>{time}</span>
       </div>
     </div>
   </div>
@@ -111,7 +111,7 @@ export default function ThemePreview() {
             <h1 style={{ fontSize: 30, fontWeight: 900, color: C.text, letterSpacing: '-0.8px', marginTop: 2 }}>Your Dashboard</h1>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 14, background: C.card, border: `1px solid ${C.borderMd}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: C.muted, cursor: 'pointer' }}>🔍</div>
+            <div style={{ width: 42, height: 42, borderRadius: 14, background: C.card, border: `1px solid ${C.borderMd}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: C.muted, cursor: 'pointer' }} />
             <div style={{ width: 42, height: 42, borderRadius: 14, background: C.mint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: C.bg, fontWeight: 900, cursor: 'pointer' }}>+</div>
           </div>
         </div>
@@ -120,9 +120,9 @@ export default function ThemePreview() {
         <div style={{ marginBottom: 36 }}>
           <SectionHead label="Today" link="Activity" />
           <div style={{ display: 'flex', gap: 12 }}>
-            <StatCard icon="🥗" value="1,840" label="calories"      pct={0.62} ringColor={C.amber} />
-            <StatCard icon="💧" value="6 cups" label="water"        pct={0.75} ringColor={C.mint}  />
-            <StatCard icon="⚡" value="4 / 5"  label="meals planned" pct={0.80} ringColor={C.coral} />
+            <StatCard icon="" value="1,840" label="calories"      pct={0.62} ringColor={C.amber} />
+            <StatCard icon="" value="6 cups" label="water"        pct={0.75} ringColor={C.mint}  />
+            <StatCard icon="" value="4 / 5"  label="meals planned" pct={0.80} ringColor={C.coral} />
           </div>
         </div>
 
