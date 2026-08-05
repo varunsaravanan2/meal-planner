@@ -12,7 +12,7 @@ import type {
   FoodLogEntry,
 } from '@/types';
 
-const BASE = 'http://localhost:8000';
+export const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -388,7 +388,7 @@ export async function uploadProgressPhoto(entryId: string, file: File, label?: s
   const form = new FormData();
   form.append('file', file);
   if (label) form.append('label', label);
-  const res = await fetch(`http://localhost:8000/api/v1/progress/${entryId}/photos`, {
+  const res = await fetch(`${BASE}/api/v1/progress/${entryId}/photos`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: form,

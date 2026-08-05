@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getRecipes, searchRecipes, createRecipe, updateRecipe, extractRecipeFromText, extractRecipeFromUrl, deleteRecipe, isLoggedIn, getSubscriptionStatus, toggleFavorite, type SubscriptionStatus } from '@/lib/api';
+import { getRecipes, searchRecipes, createRecipe, updateRecipe, extractRecipeFromText, extractRecipeFromUrl, deleteRecipe, isLoggedIn, getSubscriptionStatus, toggleFavorite, BASE, type SubscriptionStatus } from '@/lib/api';
 import type { Recipe, NutritionInfo } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -203,7 +203,7 @@ export default function RecipesPage() {
       const token = localStorage.getItem('token');
       const body = new FormData();
       body.append('file', file);
-      const res = await fetch('http://localhost:8000/api/v1/recipes/scan-label', {
+      const res = await fetch(`${BASE}/api/v1/recipes/scan-label`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` }, body,
       });
       if (!res.ok) throw new Error('Scan failed — try entering values manually.');
