@@ -16,10 +16,10 @@ def get_db_connection():
             settings.DATABASE_URL,
             cursor_factory=RealDictCursor
         )
-        print("✅ Database connection established")
+        print("Database connection established")
         return connection
     except Exception as error:
-        print(f"❌ Error connecting to database: {error}")
+        print(f"Error connecting to database: {error}")
         raise  # Re-raise the error so caller knows it failed
 
 
@@ -37,11 +37,11 @@ def get_db():
     try:
         yield connection
         connection.commit()
-        print("✅ Transaction committed")
+        print("Transaction committed")
     except Exception as e:
         connection.rollback()
-        print(f"❌ Transaction rolled back: {e}")
+        print(f"Transaction rolled back: {e}")
         raise e
     finally:
         connection.close()
-        print("🔒 Database connection closed")
+        print("Database connection closed")

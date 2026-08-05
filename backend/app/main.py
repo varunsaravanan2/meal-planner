@@ -26,10 +26,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    print("🔨 Creating database tables...")
+    print("Creating database tables...")
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created!")
-    print("🚀 Meal Planner API is ready!")
+    print("Database tables created!")
+    print("Meal Planner API is ready!")
 
 app.include_router(
     progress_router.router,

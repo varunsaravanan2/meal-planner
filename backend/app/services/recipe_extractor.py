@@ -220,7 +220,7 @@ async def fetch_instagram_post_content(url: str) -> str:
     
     # Example return for testing (uncomment to test AI extraction):
     # return """
-    # PASTA CARBONARA 🍝
+    # PASTA CARBONARA
     # 
     # Ingredients:
     # - 400g spaghetti

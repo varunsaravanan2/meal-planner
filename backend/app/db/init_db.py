@@ -20,30 +20,30 @@ def create_tables():
     - Relationships are handled automatically
     - Type-safe (Python types → SQL types)
     """
-    print("🔨 Creating database tables...")
+    print("Creating database tables...")
     
     # This one line replaces all your CREATE TABLE statements!
     # SQLAlchemy looks at all models that inherit from Base
     # and creates tables for them
     Base.metadata.create_all(bind=engine)
     
-    print("✅ Database tables created successfully!")
+    print("Database tables created successfully!")
 
 
 def drop_tables():
     """
     Drop all tables - useful for testing/resetting.
-    ⚠️ WARNING: This deletes all data!
-    
+    WARNING: This deletes all data!
+
     Drops tables in correct order (handles foreign keys).
     """
-    print("🗑️  Dropping all tables...")
-    
+    print("Dropping all tables...")
+
     # This drops ALL tables defined by SQLAlchemy models
     # CASCADE is handled automatically
     Base.metadata.drop_all(bind=engine)
-    
-    print("✅ All tables dropped")
+
+    print("All tables dropped")
 
 
 if __name__ == "__main__":

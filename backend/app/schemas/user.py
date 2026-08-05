@@ -22,12 +22,12 @@ class UserCreate(BaseModel):
     
     Example invalid inputs:
     {
-        "email": "not-an-email",      # ❌ Invalid email
+        "email": "not-an-email",      # Invalid email
         "password": "secure123"
     }
     {
         "email": "user@example.com",
-        "password": "short"            # ❌ Too short
+        "password": "short"            # Too short
     }
     """
     email: EmailStr
